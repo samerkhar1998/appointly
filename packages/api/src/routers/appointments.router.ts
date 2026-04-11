@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { createTRPCRouter, publicProcedure, salonOwnerProcedure } from '../trpc.js';
 import { createBookingSchema, cancelByTokenSchema } from '@appointly/shared';
 import { notificationService } from '../lib/notifications.js';
+import { scheduleReminders, cancelReminders } from '../lib/queue.js';
 
 const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_OTP_ATTEMPTS = 5;
@@ -120,15 +121,19 @@ export const appointmentsRouter = createTRPCRouter({
       data: { token_used: true },
     });
 
-    // 9. Send WhatsApp confirmation (non-blocking — errors are swallowed to not block booking)
-    void sendConfirmationNotification({
-      appointment,
-      service,
-      salon,
-    }).catch((err: unknown) => {
+    // 9. Send WhatsApp confirmation + schedule reminder jobs (non-blocking)
+    void sendConfirmationNotification({ appointment, service, salon }).catch((err: unknown) => {
       // eslint-disable-next-line no-console
       console.error('[notifications] confirmation failed:', err);
     });
+
+    if (isAutoConfirm) {
+      // Schedule reminders only for confirmed appointments
+      void scheduleReminders(appointment.id, appointment.start_datetime).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[queue] scheduleReminders failed:', err);
+      });
+    }
 
     return { appointment_id: appointment.id, cancel_token: appointment.cancel_token };
   }),
@@ -179,21 +184,30 @@ export const appointmentsRouter = createTRPCRouter({
     }),
 
   // Confirms a pending appointment by the salon owner.
+  // Schedules 24h and 1h reminder jobs after confirming.
   confirm: salonOwnerProcedure
     .input(z.object({ appointment_id: z.string().cuid() }))
     .mutation(async ({ input, ctx }) => {
-      return ctx.db.appointment.update({
+      const updated = await ctx.db.appointment.update({
         where: { id: input.appointment_id },
         data: { status: 'CONFIRMED' },
       });
+
+      void scheduleReminders(updated.id, updated.start_datetime).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[queue] scheduleReminders failed:', err);
+      });
+
+      return updated;
     }),
 
   // Declines a pending appointment by the salon owner.
+  // Cancels any pending reminder jobs.
   // reason: optional explanation shown to the customer
   decline: salonOwnerProcedure
     .input(z.object({ appointment_id: z.string().cuid(), reason: z.string().optional() }))
     .mutation(async ({ input, ctx }) => {
-      return ctx.db.appointment.update({
+      const updated = await ctx.db.appointment.update({
         where: { id: input.appointment_id },
         data: {
           status: 'CANCELLED',
@@ -201,6 +215,13 @@ export const appointmentsRouter = createTRPCRouter({
           cancellation_reason: input.reason,
         },
       });
+
+      void cancelReminders(updated.id).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[queue] cancelReminders failed:', err);
+      });
+
+      return updated;
     }),
 
   // Cancels an appointment using a single-use magic-link token.
@@ -240,6 +261,11 @@ export const appointmentsRouter = createTRPCRouter({
           cancelled_by: 'CUSTOMER',
           cancel_token_used: true,
         },
+      });
+
+      void cancelReminders(appointment.id).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[queue] cancelReminders failed:', err);
       });
 
       return { success: true };
@@ -359,6 +385,11 @@ export const appointmentsRouter = createTRPCRouter({
         }),
       ]);
 
+      void cancelReminders(appointment.id).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[queue] cancelReminders failed:', err);
+      });
+
       return { success: true };
     }),
 
@@ -389,7 +420,7 @@ export const appointmentsRouter = createTRPCRouter({
     }),
 
   // Updates the status of an appointment by the salon owner.
-  // Handles confirm, complete, no-show, and cancel actions.
+  // Schedules reminder jobs when confirming; cancels them when cancelling.
   updateStatus: salonOwnerProcedure
     .input(
       z.object({
@@ -399,7 +430,7 @@ export const appointmentsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      return ctx.db.appointment.update({
+      const updated = await ctx.db.appointment.update({
         where: { id: input.appointment_id },
         data: {
           status: input.status,
@@ -408,6 +439,20 @@ export const appointmentsRouter = createTRPCRouter({
             : {}),
         },
       });
+
+      if (input.status === 'CONFIRMED') {
+        void scheduleReminders(updated.id, updated.start_datetime).catch((err: unknown) => {
+          // eslint-disable-next-line no-console
+          console.error('[queue] scheduleReminders failed:', err);
+        });
+      } else if (input.status === 'CANCELLED') {
+        void cancelReminders(updated.id).catch((err: unknown) => {
+          // eslint-disable-next-line no-console
+          console.error('[queue] cancelReminders failed:', err);
+        });
+      }
+
+      return updated;
     }),
 });
 
