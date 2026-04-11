@@ -213,6 +213,32 @@ export const appointmentsRouter = createTRPCRouter({
       throw new TRPCError({ code: 'NOT_IMPLEMENTED', message: 'TODO' });
     }),
 
+  // Non-paginated calendar query — returns all appointments for a date range
+  listForCalendar: salonOwnerProcedure
+    .input(
+      z.object({
+        salon_id: z.string().cuid(),
+        date_from: z.string().datetime({ offset: true }),
+        date_to: z.string().datetime({ offset: true }),
+      }),
+    )
+    .query(async ({ input, ctx }) => {
+      return ctx.db.appointment.findMany({
+        where: {
+          salon_id: input.salon_id,
+          start_datetime: { gte: new Date(input.date_from) },
+          end_datetime: { lte: new Date(input.date_to) },
+          status: { not: 'CANCELLED' },
+        },
+        include: {
+          staff: { select: { id: true, display_name: true } },
+          service: { select: { id: true, name: true, duration_mins: true } },
+          salon_client: { select: { id: true, name: true, phone: true } },
+        },
+        orderBy: { start_datetime: 'asc' },
+      });
+    }),
+
   updateStatus: salonOwnerProcedure
     .input(
       z.object({
