@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { createTRPCRouter, publicProcedure, salonOwnerProcedure } from '../trpc.js';
+import { createTRPCRouter, publicProcedure, salonOwnerProcedure } from '../trpc';
 
 export const salonClientsRouter = createTRPCRouter({
   getByToken: publicProcedure

@@ -14,7 +14,13 @@ export const createSalonSchema = z.object({
   timezone: z.string().default('Asia/Jerusalem'),
 });
 
-export const updateSalonSchema = createSalonSchema.partial().omit({ slug: true });
+export const updateSalonSchema = createSalonSchema
+  .partial()
+  .omit({ slug: true })
+  .extend({
+    logo_url: z.string().url().optional().nullable(),
+    cover_url: z.string().url().optional().nullable(),
+  });
 
 export const salonHoursSchema = z.object({
   hours: z.array(

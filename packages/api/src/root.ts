@@ -1,16 +1,16 @@
-import { createTRPCRouter } from './trpc.js';
-import { authRouter } from './routers/auth.router.js';
-import { salonsRouter } from './routers/salons.router.js';
-import { staffRouter } from './routers/staff.router.js';
-import { servicesRouter } from './routers/services.router.js';
-import { verificationRouter } from './routers/verification.router.js';
-import { availabilityRouter } from './routers/availability.router.js';
-import { appointmentsRouter } from './routers/appointments.router.js';
-import { salonClientsRouter } from './routers/salonClients.router.js';
-import { ordersRouter } from './routers/orders.router.js';
-import { productsRouter } from './routers/products.router.js';
-import { promoCodesRouter } from './routers/promoCodes.router.js';
-import { analyticsRouter } from './routers/analytics.router.js';
+import { createTRPCRouter } from './trpc';
+import { authRouter } from './routers/auth.router';
+import { salonsRouter } from './routers/salons.router';
+import { staffRouter } from './routers/staff.router';
+import { servicesRouter } from './routers/services.router';
+import { verificationRouter } from './routers/verification.router';
+import { availabilityRouter } from './routers/availability.router';
+import { appointmentsRouter } from './routers/appointments.router';
+import { salonClientsRouter } from './routers/salonClients.router';
+import { ordersRouter } from './routers/orders.router';
+import { productsRouter } from './routers/products.router';
+import { promoCodesRouter } from './routers/promoCodes.router';
+import { analyticsRouter } from './routers/analytics.router';
 
 export const appRouter = createTRPCRouter({
   auth: authRouter,

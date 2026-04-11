@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { createTRPCRouter, publicProcedure, salonOwnerProcedure } from '../trpc.js';
+import { createTRPCRouter, publicProcedure, salonOwnerProcedure } from '../trpc';
 
 const createOrderSchema = z.object({
   salon_id: z.string().cuid(),

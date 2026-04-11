@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createTRPCRouter, publicProcedure, salonOwnerProcedure } from '../trpc.js';
+import { createTRPCRouter, publicProcedure, salonOwnerProcedure } from '../trpc';
 import { createServiceSchema, updateServiceSchema } from '@appointly/shared';
 
 export const servicesRouter = createTRPCRouter({

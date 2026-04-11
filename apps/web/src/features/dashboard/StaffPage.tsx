@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ImageUpload } from '@/components/ui/image-upload';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -29,6 +30,7 @@ const createStaffSchema = z.object({
   display_name: z.string().min(1, 'שם נדרש').max(100),
   email: z.string().email('כתובת אימייל לא תקינה'),
   bio: z.string().max(500).optional(),
+  avatar_url: z.string().url().optional().nullable(),
   is_bookable: z.boolean().default(true),
 });
 
@@ -73,12 +75,19 @@ export function StaffPage() {
 
   const form = useForm<CreateStaffForm>({
     resolver: zodResolver(createStaffSchema),
-    defaultValues: { display_name: '', email: '', is_bookable: true },
+    defaultValues: { display_name: '', email: '', avatar_url: null, is_bookable: true },
   });
 
   function onSubmit(values: CreateStaffForm) {
     if (!salon?.id) return;
-    createMutation.mutate({ salon_id: salon.id, ...values });
+    createMutation.mutate({
+      salon_id: salon.id,
+      display_name: values.display_name,
+      email: values.email,
+      bio: values.bio,
+      is_bookable: values.is_bookable,
+      ...(values.avatar_url ? { avatar_url: values.avatar_url } : {}),
+    });
   }
 
   function getInitials(name: string) {
@@ -158,6 +167,7 @@ export function StaffPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-12 w-12">
+                        {staff.avatar_url && <AvatarImage src={staff.avatar_url} alt={staff.display_name} />}
                         <AvatarFallback className="text-sm font-semibold">
                           {getInitials(staff.display_name)}
                         </AvatarFallback>
@@ -222,6 +232,22 @@ export function StaffPage() {
           </DialogHeader>
 
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Avatar upload */}
+            <div className="flex items-center gap-4">
+              <ImageUpload
+                value={form.watch('avatar_url') ?? undefined}
+                onChange={(url) => form.setValue('avatar_url', url || null)}
+                folder="staff"
+                aspect="square"
+                label="תמונה"
+                disabled={createMutation.isPending}
+              />
+              <p className="text-xs text-muted leading-relaxed">
+                העלה תמונת פרופיל לאיש הצוות.<br />
+                JPEG, PNG או WebP, עד 10 MB.
+              </p>
+            </div>
+
             <div className="space-y-1.5">
               <Label htmlFor="display_name">שם תצוגה</Label>
               <Input
