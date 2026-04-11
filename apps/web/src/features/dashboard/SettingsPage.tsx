@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { Loader2, MessageCircle, Clock, Settings2, Store } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { useSalon } from '@/lib/use-salon';
+import { ImageUpload } from '@/components/ui/image-upload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,6 +31,8 @@ const infoSchema = z.object({
   phone: z.string().max(20).optional(),
   address: z.string().max(200).optional(),
   city: z.string().max(100).optional(),
+  logo_url: z.string().url().optional().nullable(),
+  cover_url: z.string().url().optional().nullable(),
 });
 
 const bookingSchema = z.object({
@@ -173,6 +176,8 @@ export function SettingsPage() {
         phone: salonFull.phone ?? '',
         address: salonFull.address ?? '',
         city: salonFull.city ?? '',
+        logo_url: salonFull.logo_url ?? null,
+        cover_url: salonFull.cover_url ?? null,
       });
     }
   }, [salonFull, infoForm]);
@@ -308,8 +313,34 @@ export function SettingsPage() {
       </div>
 
       {/* ── Salon Info ─────────────────────────────────────────────────────── */}
-      <Section icon={Store} title="פרטי הסלון" description="שם, טלפון, כתובת">
+      <Section icon={Store} title="פרטי הסלון" description="שם, טלפון, כתובת ותמונות">
         <form onSubmit={infoForm.handleSubmit(onInfoSubmit)} className="space-y-4">
+          {/* Logo + Cover images */}
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>תמונת שער (Cover)</Label>
+              <ImageUpload
+                value={infoForm.watch('cover_url') ?? undefined}
+                onChange={(url) => infoForm.setValue('cover_url', url || null)}
+                folder="salons"
+                aspect="wide"
+                label="העלה תמונת שער"
+                disabled={updateSalonMutation.isPending}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>לוגו הסלון</Label>
+              <ImageUpload
+                value={infoForm.watch('logo_url') ?? undefined}
+                onChange={(url) => infoForm.setValue('logo_url', url || null)}
+                folder="salons"
+                aspect="square"
+                label="העלה לוגו"
+                disabled={updateSalonMutation.isPending}
+              />
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="salon-name">שם הסלון</Label>

@@ -13,7 +13,7 @@
 | 5 | Auth — email/password (scrypt), Google OAuth, registration page, JWT cookies | ✅ Done |
 | 6 | Notification service (Twilio/Resend), auto-confirm, phone OTP cancellation | ✅ Done |
 | 7 | BullMQ reminder jobs (24h + 1h before appointment) | ✅ Done |
-| 8 | Cloudinary image uploads (salon logo, staff avatars, product photos) | 🔜 Next |
+| 8 | Cloudinary image uploads (salon logo, staff avatars, product photos) | ✅ Done |
 | 9 | Mobile app (React Native + Expo) | 🔜 Future |
 
 

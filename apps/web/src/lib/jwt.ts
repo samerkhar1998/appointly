@@ -37,3 +37,19 @@ export function buildAuthCookie(cookieValue: string): string {
 export function buildClearAuthCookie(): string {
   return 'appointly_token=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0';
 }
+
+// Verifies a JWT and returns its payload, or null if invalid/expired.
+// token: the raw JWT string from the cookie
+export async function verifyJwt(token: string): Promise<JwtPayload | null> {
+  try {
+    const { payload } = await jose.jwtVerify(token, JWT_SECRET);
+    return {
+      sub: payload['sub'] as string,
+      email: payload['email'] as string,
+      role: payload['role'] as string,
+      salon_id: payload['salon_id'] as string | undefined,
+    };
+  } catch {
+    return null;
+  }
+}

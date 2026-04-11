@@ -4,9 +4,10 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, ShoppingBag } from 'lucide-react';
+import { Plus, Pencil, ShoppingBag, X } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { useSalon } from '@/lib/use-salon';
+import { ImageUpload } from '@/components/ui/image-upload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -31,6 +32,8 @@ import {
 import { toast } from '@/lib/use-toast';
 import { formatPrice } from '@/lib/utils';
 
+const MAX_PRODUCT_PHOTOS = 5;
+
 const productFormSchema = z.object({
   name: z.string().min(1, 'שם נדרש').max(100),
   description: z.string().max(1000).optional(),
@@ -46,6 +49,7 @@ const productFormSchema = z.object({
   ),
   fulfillment: z.enum(['PICKUP', 'DELIVERY', 'BOTH']),
   is_active: z.boolean(),
+  photos: z.array(z.string().url()).default([]),
 });
 
 type ProductFormValues = z.infer<typeof productFormSchema>;
@@ -100,6 +104,7 @@ export function ShopPage() {
       low_stock_alert_at: null,
       fulfillment: 'PICKUP',
       is_active: true,
+      photos: [],
     },
   });
 
@@ -111,6 +116,7 @@ export function ShopPage() {
       low_stock_alert_at: null,
       fulfillment: 'PICKUP',
       is_active: true,
+      photos: [],
     });
     setEditingId(null);
     setDialogOpen(true);
@@ -126,14 +132,31 @@ export function ShopPage() {
       low_stock_alert_at: product.low_stock_alert_at,
       fulfillment: product.fulfillment as 'PICKUP' | 'DELIVERY' | 'BOTH',
       is_active: product.is_active,
+      photos: product.photos ?? [],
     });
     setEditingId(product.id);
     setDialogOpen(true);
   }
 
+  // Adds a newly uploaded photo URL to the photos array.
+  // url: the Cloudinary URL returned after upload
+  function handlePhotoAdded(url: string) {
+    const current = form.getValues('photos') ?? [];
+    if (url && !current.includes(url) && current.length < MAX_PRODUCT_PHOTOS) {
+      form.setValue('photos', [...current, url]);
+    }
+  }
+
+  // Removes a photo from the photos array by index.
+  // index: the position to remove
+  function handlePhotoRemoved(index: number) {
+    const current = form.getValues('photos') ?? [];
+    form.setValue('photos', current.filter((_, i) => i !== index));
+  }
+
   function onSubmit(values: ProductFormValues) {
     if (!salon?.id) return;
-    const payload = { ...values, currency: 'ILS' as const, photos: [] as string[] };
+    const payload = { ...values, currency: 'ILS' as const };
     if (editingId) {
       updateMutation.mutate({ product_id: editingId, data: payload });
     } else {
@@ -190,6 +213,7 @@ export function ShopPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>תמונה</TableHead>
                   <TableHead>שם המוצר</TableHead>
                   <TableHead>קטגוריה</TableHead>
                   <TableHead>מחיר</TableHead>
@@ -202,6 +226,20 @@ export function ShopPage() {
               <TableBody>
                 {products.map((product) => (
                   <TableRow key={product.id}>
+                    <TableCell>
+                      {product.photos?.[0] ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={product.photos[0]}
+                          alt={product.name}
+                          className="w-10 h-10 rounded-lg object-cover border border-border/50"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-surface-elevated border border-border/50 flex items-center justify-center">
+                          <ShoppingBag className="w-4 h-4 text-muted" />
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div>
                         <p className="font-medium text-foreground">{product.name}</p>
@@ -363,6 +401,45 @@ export function ShopPage() {
                 checked={form.watch('is_active')}
                 onCheckedChange={(v) => form.setValue('is_active', v)}
               />
+            </div>
+
+            {/* Product photos */}
+            <div className="space-y-2">
+              <Label>תמונות המוצר (עד {MAX_PRODUCT_PHOTOS})</Label>
+              <div className="flex flex-wrap gap-2">
+                {/* Existing photos */}
+                {(form.watch('photos') ?? []).map((url, index) => (
+                  <div key={url} className="relative group w-20 h-20">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={url}
+                      alt={`תמונה ${index + 1}`}
+                      className="w-full h-full object-cover rounded-xl border border-border/50"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handlePhotoRemoved(index)}
+                      aria-label="הסר תמונה"
+                      className="absolute -top-1.5 -end-1.5 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                {/* Add photo slot */}
+                {(form.watch('photos') ?? []).length < MAX_PRODUCT_PHOTOS && (
+                  <ImageUpload
+                    value={undefined}
+                    onChange={handlePhotoAdded}
+                    folder="products"
+                    aspect="square"
+                    label="+ תמונה"
+                    disabled={isBusy}
+                    className="w-20"
+                  />
+                )}
+              </div>
+              <p className="text-xs text-muted">לחץ על + להוספת תמונה. לחץ על תמונה קיימת להסרתה.</p>
             </div>
 
             <DialogFooter>
