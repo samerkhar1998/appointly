@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "Appointly",
+    "slug": "appointly",
+    "version": "1.0.0",
+    "scheme": "appointly",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#7C3AED"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.appointly.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#7C3AED"
+      },
+      "package": "com.appointly.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-localization"
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

@@ -5,6 +5,7 @@ import { db } from '@appointly/db';
 
 interface Props {
   params: { slug: string };
+  searchParams: { client?: string };
 }
 
 export async function generateMetadata({ params }: Props) {
@@ -14,7 +15,7 @@ export async function generateMetadata({ params }: Props) {
   };
 }
 
-export default async function BookingPage({ params }: Props) {
+export default async function BookingPage({ params, searchParams }: Props) {
   const salon = await db.salon.findUnique({
     where: { slug: params.slug, is_active: true },
     select: {
@@ -35,6 +36,7 @@ export default async function BookingPage({ params }: Props) {
         salonName={salon.name}
         salonTimezone={salon.timezone}
         logoUrl={salon.logo_url}
+        clientToken={searchParams.client ?? null}
       />
       <Toaster />
     </>

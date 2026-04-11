@@ -1,11 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StepServices } from './steps/StepServices';
+import { StepStaff } from './steps/StepStaff';
 import { StepDateTime } from './steps/StepDateTime';
 import { StepDetails } from './steps/StepDetails';
 import { StepOTP } from './steps/StepOTP';
 import { StepConfirmation } from './steps/StepConfirmation';
+import { trpc } from '@/lib/trpc';
 import { Scissors } from 'lucide-react';
 
 export type BookingState = {
@@ -27,12 +29,13 @@ export type BookingState = {
   cancel_token: string;
 };
 
-type Step = 'services' | 'datetime' | 'details' | 'otp' | 'confirmation';
+type Step = 'services' | 'staff' | 'datetime' | 'details' | 'otp' | 'confirmation';
 
-const STEPS: Step[] = ['services', 'datetime', 'details', 'otp', 'confirmation'];
+const STEPS: Step[] = ['services', 'staff', 'datetime', 'details', 'otp', 'confirmation'];
 
 const STEP_LABELS: Record<Step, string> = {
   services: 'שירות',
+  staff: 'צוות',
   datetime: 'מועד',
   details: 'פרטים',
   otp: 'אימות',
@@ -45,6 +48,8 @@ interface BookingFlowProps {
   salonName: string;
   salonTimezone: string;
   logoUrl?: string | null;
+  /** Client pre-fill token from ?client= query param */
+  clientToken?: string | null;
 }
 
 export function BookingFlow({
@@ -53,6 +58,7 @@ export function BookingFlow({
   salonName,
   salonTimezone,
   logoUrl,
+  clientToken,
 }: BookingFlowProps) {
   const [step, setStep] = useState<Step>('services');
   const [booking, setBooking] = useState<Partial<BookingState>>({
@@ -61,7 +67,25 @@ export function BookingFlow({
     salon_timezone: salonTimezone,
   });
 
+  // Pre-fill customer details from client token
+  const { data: clientData } = trpc.salonClients.getByToken.useQuery(
+    { client_token: clientToken! },
+    { enabled: !!clientToken },
+  );
+
+  useEffect(() => {
+    if (clientData) {
+      setBooking((prev) => ({
+        ...prev,
+        customer_name: clientData.name,
+        customer_phone: clientData.phone,
+        customer_email: clientData.email ?? '',
+      }));
+    }
+  }, [clientData]);
+
   const currentStepIndex = STEPS.indexOf(step);
+  // Progress bar excludes 'confirmation'
   const visibleSteps = STEPS.filter((s) => s !== 'confirmation');
 
   function advance(updates: Partial<BookingState>) {
@@ -73,6 +97,13 @@ export function BookingFlow({
   function back() {
     const prev = STEPS[currentStepIndex - 1];
     if (prev) setStep(prev);
+  }
+
+  // If client token is present, skip OTP when we reach that step
+  function advanceFromDetails(details: Partial<BookingState>) {
+    const next = clientToken ? 'confirmation' : 'otp';
+    setBooking((prev) => ({ ...prev, ...details }));
+    setStep(next);
   }
 
   return (
@@ -159,6 +190,19 @@ export function BookingFlow({
           />
         )}
 
+        {step === 'staff' && (
+          <StepStaff
+            salonId={salonId}
+            onSelect={(staff) =>
+              advance({
+                staff_id: staff?.id ?? null,
+                staff_name: staff?.display_name ?? null,
+              })
+            }
+            onBack={back}
+          />
+        )}
+
         {step === 'datetime' && booking.service_id && (
           <StepDateTime
             salonId={salonId}
@@ -175,7 +219,7 @@ export function BookingFlow({
         {step === 'details' && (
           <StepDetails
             booking={booking}
-            onSubmit={(details) => advance(details)}
+            onSubmit={(details) => advanceFromDetails(details)}
             onBack={back}
           />
         )}
