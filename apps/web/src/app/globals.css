@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+    --background: 249 250 251;
+    --foreground: 17 24 39;
+    --primary: 124 58 237;
+    --primary-foreground: 255 255 255;
+    --muted: 107 114 128;
+    --border: 229 231 235;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* RTL typography defaults */
+  h1, h2, h3, h4, h5, h6 {
+    @apply tracking-tighter font-bold;
+  }
+
+  p {
+    line-height: 1.7;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

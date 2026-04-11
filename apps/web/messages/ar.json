@@ -1,0 +1,48 @@
+{
+  "common": {
+    "loading": "جاري التحميل...",
+    "error": "خطأ",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "confirm": "تأكيد",
+    "back": "رجوع",
+    "next": "التالي",
+    "close": "إغلاق"
+  },
+  "booking": {
+    "title": "حجز موعد",
+    "select_service": "اختر الخدمة",
+    "select_staff": "اختر المعالج",
+    "select_date": "اختر التاريخ",
+    "select_time": "اختر الوقت",
+    "enter_details": "البيانات الشخصية",
+    "verify_phone": "التحقق من رقم الهاتف",
+    "confirmation": "تأكيد الحجز",
+    "your_name": "اسمك",
+    "your_phone": "رقم الهاتف",
+    "your_email": "البريد الإلكتروني (اختياري)",
+    "send_otp": "إرسال الرمز",
+    "enter_otp": "أدخل الرمز الذي تلقيته",
+    "book_now": "احجز الآن",
+    "no_slots": "لا تتوفر مواعيد في هذا اليوم"
+  },
+  "dashboard": {
+    "overview": "نظرة عامة",
+    "calendar": "التقويم",
+    "clients": "العملاء",
+    "staff": "الفريق",
+    "services": "الخدمات",
+    "shop": "المتجر",
+    "promos": "رموز الخصم",
+    "analytics": "التحليلات",
+    "settings": "الإعدادات",
+    "plan": "الخطة"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "login_button": "دخول إلى النظام",
+    "logout": "تسجيل الخروج"
+  }
+}

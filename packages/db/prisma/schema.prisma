@@ -1,0 +1,599 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum GlobalRole {
+  CUSTOMER
+  SALON_OWNER
+  PLATFORM_ADMIN
+}
+
+enum SalonRole {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+enum ConfirmationMode {
+  MANUAL
+  AUTO
+}
+
+enum CancellationMethod {
+  MAGIC_LINK
+  PHONE_OTP
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum CancelledBy {
+  CUSTOMER
+  OWNER
+  SYSTEM
+}
+
+enum Fulfillment {
+  PICKUP
+  DELIVERY
+  BOTH
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum PromoType {
+  PERCENTAGE
+  FIXED
+  FREE_SERVICE
+  FREE_PRODUCT
+}
+
+enum PromoAppliesTo {
+  BOOKINGS
+  PRODUCTS
+  BOTH
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Plan
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Plan {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  name                  String  @unique // FREE | BASIC | PRO | ENTERPRISE
+  display_name          String
+  price_monthly         Decimal @default(0) @db.Decimal(10, 2)
+  price_yearly          Decimal @default(0) @db.Decimal(10, 2)
+  max_staff             Int     @default(1)
+  max_services          Int     @default(5)
+  max_monthly_bookings  Int     @default(50)
+  allow_products        Boolean @default(false)
+  allow_promos          Boolean @default(false)
+  allow_analytics       Boolean @default(false)
+  allow_multi_staff     Boolean @default(false)
+  allow_custom_wa       Boolean @default(false)
+  allow_api_access      Boolean @default(false)
+  is_active             Boolean @default(true)
+
+  salons Salon[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// User
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  email         String      @unique
+  phone         String?     @unique
+  name          String
+  password_hash String
+  global_role   GlobalRole  @default(CUSTOMER)
+  is_active     Boolean     @default(true)
+
+  salon_members SalonMember[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Salon
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Salon {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  name        String
+  slug        String  @unique
+  description String?
+  phone       String?
+  address     String?
+  city        String?
+  timezone    String  @default("Asia/Jerusalem")
+  logo_url    String?
+  cover_url   String?
+  is_active   Boolean @default(true)
+
+  plan_id String
+  plan    Plan   @relation(fields: [plan_id], references: [id])
+
+  settings      SalonSettings?
+  hours         SalonHours[]
+  members       SalonMember[]
+  categories    Category[]
+  services      Service[]
+  appointments  Appointment[]
+  clients       SalonClient[]
+  products      Product[]
+  orders        Order[]
+  promo_codes   PromoCode[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SalonSettings
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SalonSettings {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  salon_id String @unique
+  salon    Salon  @relation(fields: [salon_id], references: [id], onDelete: Cascade)
+
+  confirmation_mode         ConfirmationMode   @default(AUTO)
+  cancellation_method       CancellationMethod @default(MAGIC_LINK)
+  cancellation_window_hours Int                @default(24)
+
+  wa_phone_number           String?
+  wa_confirmation_template  String?
+  wa_reminder_template      String?
+  wa_post_visit_template    String?
+
+  booking_slot_interval_mins Int @default(15)
+  buffer_after_mins          Int @default(0)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SalonHours
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SalonHours {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  salon_id    String
+  salon       Salon   @relation(fields: [salon_id], references: [id], onDelete: Cascade)
+
+  day_of_week Int     // 0 = Sunday, 6 = Saturday
+  open_time   String  // "HH:mm" in salon timezone
+  close_time  String  // "HH:mm" in salon timezone
+  is_closed   Boolean @default(false)
+
+  @@unique([salon_id, day_of_week])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SalonMember
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SalonMember {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user_id   String
+  user      User      @relation(fields: [user_id], references: [id])
+  salon_id  String
+  salon     Salon     @relation(fields: [salon_id], references: [id], onDelete: Cascade)
+  role      SalonRole @default(STAFF)
+  is_active Boolean   @default(true)
+
+  staff Staff?
+
+  @@unique([user_id, salon_id])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Staff
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Staff {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  salon_member_id String      @unique
+  salon_member    SalonMember @relation(fields: [salon_member_id], references: [id], onDelete: Cascade)
+
+  display_name String
+  bio          String?
+  avatar_url   String?
+  is_bookable  Boolean @default(true)
+
+  schedules     StaffSchedule[]
+  blocked_times StaffBlockedTime[]
+  appointments  Appointment[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// StaffSchedule
+// ─────────────────────────────────────────────────────────────────────────────
+
+model StaffSchedule {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  staff_id   String
+  staff      Staff   @relation(fields: [staff_id], references: [id], onDelete: Cascade)
+
+  day_of_week Int     // 0–6
+  start_time  String  // "HH:mm"
+  end_time    String  // "HH:mm"
+  is_working  Boolean @default(true)
+
+  @@unique([staff_id, day_of_week])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// StaffBlockedTime
+// ─────────────────────────────────────────────────────────────────────────────
+
+model StaffBlockedTime {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  staff_id       String
+  staff          Staff    @relation(fields: [staff_id], references: [id], onDelete: Cascade)
+
+  start_datetime DateTime
+  end_datetime   DateTime
+  reason         String?
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Category
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Category {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  salon_id String
+  salon    Salon  @relation(fields: [salon_id], references: [id], onDelete: Cascade)
+
+  name     String
+  icon     String?
+  sort_order Int   @default(0)
+
+  services Service[]
+
+  @@unique([salon_id, name])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Service
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Service {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  salon_id    String
+  salon       Salon    @relation(fields: [salon_id], references: [id], onDelete: Cascade)
+  category_id String?
+  category    Category? @relation(fields: [category_id], references: [id], onDelete: SetNull)
+
+  name          String
+  description   String?
+  duration_mins Int
+  price         Decimal @db.Decimal(10, 2)
+  currency      String  @default("ILS")
+  is_active     Boolean @default(true)
+  sort_order    Int     @default(0)
+
+  appointments Appointment[]
+  promo_free_service PromoCode[] @relation("FreeService")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PhoneVerification
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PhoneVerification {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  phone_number        String
+  code_hash           String
+  verified            Boolean  @default(false)
+  attempts            Int      @default(0)
+  expires_at          DateTime
+  verification_token  String?  @unique
+  token_used          Boolean  @default(false)
+
+  @@index([phone_number])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SalonClient
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SalonClient {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  salon_id String
+  salon    Salon  @relation(fields: [salon_id], references: [id], onDelete: Cascade)
+
+  name           String
+  phone          String
+  email          String?
+  client_token   String   @unique @default(cuid())
+  total_visits   Int      @default(0)
+  last_visit_at  DateTime?
+  notes          String?
+  is_blocked     Boolean  @default(false)
+  deleted_at     DateTime?
+
+  appointments Appointment[]
+  orders       Order[]
+  promo_usages PromoUsage[]
+  reviews      Review[]
+  personal_promos PromoCode[] @relation("PersonalPromo")
+
+  @@unique([salon_id, phone])
+  @@index([salon_id, phone])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Appointment
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Appointment {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  salon_id String
+  salon    Salon  @relation(fields: [salon_id], references: [id])
+
+  staff_id String
+  staff    Staff  @relation(fields: [staff_id], references: [id])
+
+  service_id String
+  service    Service @relation(fields: [service_id], references: [id])
+
+  salon_client_id String?
+  salon_client    SalonClient? @relation(fields: [salon_client_id], references: [id])
+
+  customer_name   String
+  customer_phone  String
+  customer_email  String?
+
+  start_datetime   DateTime
+  end_datetime     DateTime
+  buffer_after_mins Int     @default(0)
+
+  status AppointmentStatus @default(PENDING)
+
+  cancel_token      String  @unique @default(cuid())
+  cancel_token_used Boolean @default(false)
+
+  cancelled_by         CancelledBy?
+  cancellation_reason  String?
+
+  reminder_24h_sent Boolean @default(false)
+  reminder_1h_sent  Boolean @default(false)
+
+  review      Review?
+  order       Order?
+  promo_usages PromoUsage[]
+
+  @@index([salon_id, start_datetime])
+  @@index([staff_id, start_datetime])
+  @@index([cancel_token])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Product
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Product {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  salon_id String
+  salon    Salon  @relation(fields: [salon_id], references: [id], onDelete: Cascade)
+
+  name                String
+  description         String?
+  category_name       String?
+  price               Decimal  @db.Decimal(10, 2)
+  currency            String   @default("ILS")
+  stock_quantity      Int?
+  low_stock_alert_at  Int?
+  fulfillment         Fulfillment @default(PICKUP)
+  is_active           Boolean  @default(true)
+  photos              String[]
+
+  order_items OrderItem[]
+  promo_free_product PromoCode[] @relation("FreeProduct")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Order
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Order {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  salon_id String
+  salon    Salon  @relation(fields: [salon_id], references: [id])
+
+  salon_client_id String
+  salon_client    SalonClient @relation(fields: [salon_client_id], references: [id])
+
+  appointment_id String?     @unique
+  appointment    Appointment? @relation(fields: [appointment_id], references: [id])
+
+  status           OrderStatus @default(PENDING)
+  fulfillment_type Fulfillment @default(PICKUP)
+  delivery_address String?
+
+  subtotal        Decimal @db.Decimal(10, 2)
+  service_total   Decimal @db.Decimal(10, 2) @default(0)
+  grand_total     Decimal @db.Decimal(10, 2)
+  discount_amount Decimal @db.Decimal(10, 2) @default(0)
+  final_total     Decimal @db.Decimal(10, 2)
+
+  promo_code_id String?
+  promo_code    PromoCode? @relation(fields: [promo_code_id], references: [id])
+
+  items        OrderItem[]
+  promo_usages PromoUsage[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OrderItem
+// ─────────────────────────────────────────────────────────────────────────────
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  order_id   String
+  order      Order   @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  product_id String
+  product    Product @relation(fields: [product_id], references: [id])
+
+  quantity   Int
+  unit_price Decimal @db.Decimal(10, 2)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PromoCode
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PromoCode {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  salon_id String
+  salon    Salon  @relation(fields: [salon_id], references: [id], onDelete: Cascade)
+
+  code  String
+  type  PromoType
+  value Decimal?  @db.Decimal(10, 2)
+
+  free_service_id String?
+  free_service    Service? @relation("FreeService", fields: [free_service_id], references: [id])
+
+  free_product_id String?
+  free_product    Product? @relation("FreeProduct", fields: [free_product_id], references: [id])
+
+  applies_to PromoAppliesTo @default(BOTH)
+
+  min_spend           Decimal?  @db.Decimal(10, 2)
+  valid_from          DateTime?
+  valid_until         DateTime?
+  max_uses_total      Int?
+  max_uses_per_client Int?
+  first_time_only     Boolean   @default(false)
+
+  salon_client_id String?           // personal code
+  salon_client    SalonClient? @relation("PersonalPromo", fields: [salon_client_id], references: [id])
+
+  times_used Int     @default(0)
+  is_active  Boolean @default(true)
+
+  orders Order[]
+  usages PromoUsage[]
+
+  @@unique([salon_id, code])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PromoUsage
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PromoUsage {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  promo_code_id String
+  promo_code    PromoCode @relation(fields: [promo_code_id], references: [id])
+
+  salon_client_id String
+  salon_client    SalonClient @relation(fields: [salon_client_id], references: [id])
+
+  order_id String?
+  order    Order?  @relation(fields: [order_id], references: [id])
+
+  appointment_id String?
+  appointment    Appointment? @relation(fields: [appointment_id], references: [id])
+
+  discount_applied Decimal  @db.Decimal(10, 2)
+  used_at          DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Review
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Review {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  appointment_id String      @unique
+  appointment    Appointment @relation(fields: [appointment_id], references: [id])
+
+  salon_client_id String
+  salon_client    SalonClient @relation(fields: [salon_client_id], references: [id])
+
+  rating     Int     // 1–5
+  comment    String?
+  is_visible Boolean @default(true)
+}

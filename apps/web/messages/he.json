@@ -1,0 +1,48 @@
+{
+  "common": {
+    "loading": "טוען...",
+    "error": "שגיאה",
+    "save": "שמור",
+    "cancel": "ביטול",
+    "confirm": "אישור",
+    "back": "חזרה",
+    "next": "הבא",
+    "close": "סגור"
+  },
+  "booking": {
+    "title": "קביעת תור",
+    "select_service": "בחר שירות",
+    "select_staff": "בחר מטפל/ת",
+    "select_date": "בחר תאריך",
+    "select_time": "בחר שעה",
+    "enter_details": "פרטים אישיים",
+    "verify_phone": "אימות מספר טלפון",
+    "confirmation": "אישור הזמנה",
+    "your_name": "שמך",
+    "your_phone": "מספר טלפון",
+    "your_email": "דוא\"ל (אופציונלי)",
+    "send_otp": "שלח קוד",
+    "enter_otp": "הכנס את הקוד שקיבלת",
+    "book_now": "קבע תור",
+    "no_slots": "אין זמינות ביום זה"
+  },
+  "dashboard": {
+    "overview": "סקירה כללית",
+    "calendar": "לוח שנה",
+    "clients": "לקוחות",
+    "staff": "צוות",
+    "services": "שירותים",
+    "shop": "חנות",
+    "promos": "קודי הנחה",
+    "analytics": "ניתוח נתונים",
+    "settings": "הגדרות",
+    "plan": "תוכנית"
+  },
+  "auth": {
+    "login": "כניסה",
+    "email": "דוא\"ל",
+    "password": "סיסמה",
+    "login_button": "כניסה למערכת",
+    "logout": "יציאה"
+  }
+}

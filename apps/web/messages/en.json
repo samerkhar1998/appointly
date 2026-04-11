@@ -1,0 +1,48 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "close": "Close"
+  },
+  "booking": {
+    "title": "Book Appointment",
+    "select_service": "Select Service",
+    "select_staff": "Select Staff",
+    "select_date": "Select Date",
+    "select_time": "Select Time",
+    "enter_details": "Your Details",
+    "verify_phone": "Verify Phone",
+    "confirmation": "Booking Confirmation",
+    "your_name": "Your Name",
+    "your_phone": "Phone Number",
+    "your_email": "Email (optional)",
+    "send_otp": "Send Code",
+    "enter_otp": "Enter the code you received",
+    "book_now": "Book Now",
+    "no_slots": "No availability on this day"
+  },
+  "dashboard": {
+    "overview": "Overview",
+    "calendar": "Calendar",
+    "clients": "Clients",
+    "staff": "Staff",
+    "services": "Services",
+    "shop": "Shop",
+    "promos": "Promo Codes",
+    "analytics": "Analytics",
+    "settings": "Settings",
+    "plan": "Plan"
+  },
+  "auth": {
+    "login": "Login",
+    "email": "Email",
+    "password": "Password",
+    "login_button": "Sign In",
+    "logout": "Logout"
+  }
+}

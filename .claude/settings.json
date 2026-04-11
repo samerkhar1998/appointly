@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install:*)",
+      "Bash(pnpm --filter @appointly/db prisma validate)",
+      "Bash(npx prisma:*)",
+      "Bash(DATABASE_URL=\"postgresql://placeholder:placeholder@localhost:5432/placeholder\" npx prisma validate)",
+      "Bash(DATABASE_URL=\"postgresql://placeholder:placeholder@localhost:5432/placeholder\" npx prisma generate)",
+      "Bash(pnpm --filter @appointly/db typecheck)",
+      "Bash(pnpm --filter @appointly/db add -D @types/node)",
+      "Bash(pnpm --filter @appointly/shared typecheck)",
+      "Bash(pnpm --filter @appointly/api typecheck)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm --filter @appointly/db --filter @appointly/shared --filter @appointly/api typecheck)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "Bash(pnpm --filter @appointly/web typecheck)",
+      "Bash(pnpm --filter @appointly/db --filter @appointly/shared --filter @appointly/api --filter @appointly/web typecheck)",
+      "Bash(git init:*)",
+      "Bash(git remote:*)",
+      "Bash(git add:*)"
+    ],
+    "additionalDirectories": [
+      "/Users/samerkharouba/Documents/appointly/apps/web/src/app/(public)/book",
+      "/Users/samerkharouba/Documents/appointly/.claude"
+    ]
+  }
+}
