@@ -1,14 +1,38 @@
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { trpc } from '@/lib/trpc';
 import { useBookingStore } from '@/store/booking';
 import { BookingHeader } from '@/components/BookingHeader';
-import { colors, spacing } from '@/lib/theme';
+import { Button } from '@/components/ui/Button';
+import { colors, fontSize, radius, spacing } from '@/lib/theme';
 import { t } from '@/lib/strings';
 
+// Renders a full-screen gate when a private salon is accessed without a valid token.
+function PrivateGate({ salonName }: { salonName: string }) {
+  return (
+    <View style={styles.center}>
+      <Text style={styles.gateIcon}>🔒</Text>
+      <Text style={styles.gateTitle}>{salonName}</Text>
+      <Text style={styles.gateSub}>{t('booking_private_sub')}</Text>
+      <Button
+        variant="outline"
+        size="md"
+        onPress={() => router.replace('/discover' as never)}
+        style={styles.gateBtn}
+      >
+        {t('booking_private_cta')}
+      </Button>
+    </View>
+  );
+}
+
 export default function BookingLayout() {
-  const { slug } = useLocalSearchParams<{ slug: string }>();
+  const { slug, invite, client } = useLocalSearchParams<{
+    slug: string;
+    invite?: string;
+    client?: string;
+  }>();
   const setBooking = useBookingStore((s) => s.setBooking);
   const resetBooking = useBookingStore((s) => s.resetBooking);
 
@@ -25,8 +49,12 @@ export default function BookingLayout() {
         salon_timezone: salon.timezone,
         salon_slug: slug ?? '',
       });
-      // Carry logo_url into booking context if needed for header
-      setBooking({ salon_id: salon.id, salon_name: salon.name, salon_timezone: salon.timezone, salon_slug: slug ?? '' });
+      setBooking({
+        salon_id: salon.id,
+        salon_name: salon.name,
+        salon_timezone: salon.timezone,
+        salon_slug: slug ?? '',
+      });
     }
   }, [salon, slug, resetBooking, setBooking]);
 
@@ -44,6 +72,12 @@ export default function BookingLayout() {
         <Text style={styles.errorText}>{t('error_generic')}</Text>
       </View>
     );
+  }
+
+  // Gate private salons: block unless the user has a client token or an invite token.
+  const isPrivate = !(salon as unknown as { is_public?: boolean }).is_public;
+  if (isPrivate && !client && !invite) {
+    return <PrivateGate salonName={salon.name} />;
   }
 
   return (
@@ -76,4 +110,22 @@ const styles = StyleSheet.create({
     color: colors.muted,
     textAlign: 'center',
   },
+  gateIcon: { fontSize: 44, marginBottom: spacing[2] },
+  gateTitle: {
+    fontFamily: 'Heebo_700Bold',
+    fontSize: fontSize.xl,
+    color: colors.foreground,
+    textAlign: 'center',
+    letterSpacing: -0.5,
+    marginBottom: spacing[1],
+  },
+  gateSub: {
+    fontFamily: 'Heebo_400Regular',
+    fontSize: fontSize.sm,
+    color: colors.muted,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: spacing[2],
+  },
+  gateBtn: { marginTop: spacing[3] },
 });

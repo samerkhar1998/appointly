@@ -106,4 +106,48 @@ export const salonClientsRouter = createTRPCRouter({
         data: { is_blocked: false },
       });
     }),
+
+  // Removes a client from the salon by soft-deleting their record.
+  // Sets deleted_at so the salon no longer appears in the client's "My Salons" list.
+  // client_id: the SalonClient record to remove
+  remove: salonOwnerProcedure
+    .input(z.object({ client_id: z.string().cuid() }))
+    .mutation(async ({ input, ctx }) => {
+      return ctx.db.salonClient.update({
+        where: { id: input.client_id },
+        data: { deleted_at: new Date() },
+      });
+    }),
+
+  // Returns all salons a phone number has an active (non-removed) client record with.
+  // Used by the "My Salons" public page for phone-based salon discovery.
+  // phone: E.164 phone number
+  // Returns salon name, slug, logo, city for each accessible salon.
+  getByPhone: publicProcedure
+    .input(z.object({ phone: z.string().min(7).max(20) }))
+    .query(async ({ input, ctx }) => {
+      const clients = await ctx.db.salonClient.findMany({
+        where: { phone: input.phone, deleted_at: null },
+        select: {
+          client_token: true,
+          salon: {
+            select: {
+              slug: true,
+              name: true,
+              logo_url: true,
+              city: true,
+              is_active: true,
+            },
+          },
+        },
+        orderBy: { last_visit_at: 'desc' },
+      });
+
+      return clients
+        .filter((c) => c.salon.is_active)
+        .map((c) => ({
+          client_token: c.client_token,
+          salon: c.salon,
+        }));
+    }),
 });

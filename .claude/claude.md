@@ -15,6 +15,7 @@
 | 7 | BullMQ reminder jobs (24h + 1h before appointment) | ✅ Done |
 | 8 | Cloudinary image uploads (salon logo, staff avatars, product photos) | ✅ Done |
 | 9 | Mobile app (React Native + Expo) | ✅ Done |
+| 9b | Public/private business discovery — search homepage, invite links, My Salons page | ✅ Done |
 | 10 | Test suite — happy-path tests for every tRPC procedure | 🔜 Next |
 | 11 | Tranzila payment integration — subscription billing + plan enforcement | 🔜 Next |
 | 12 | Expo Push Notifications — booking confirmations + reminders on mobile | 🔜 Next |

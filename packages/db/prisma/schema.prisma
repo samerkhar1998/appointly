@@ -141,6 +141,7 @@ model Salon {
   logo_url    String?
   cover_url   String?
   is_active   Boolean @default(true)
+  is_public   Boolean @default(true)
 
   plan_id String
   plan    Plan   @relation(fields: [plan_id], references: [id])
@@ -155,6 +156,26 @@ model Salon {
   products      Product[]
   orders        Order[]
   promo_codes   PromoCode[]
+  invites       SalonInvite[]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SalonInvite — invite tokens for private salons
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SalonInvite {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+
+  salon_id String
+  salon    Salon  @relation(fields: [salon_id], references: [id], onDelete: Cascade)
+
+  // Opaque UUID used in invite links (/invite/[token])
+  token      String    @unique @default(cuid())
+  expires_at DateTime?
+
+  @@index([salon_id])
+  @@index([token])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

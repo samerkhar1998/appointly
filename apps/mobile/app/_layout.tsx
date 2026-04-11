@@ -42,6 +42,9 @@ export default function RootLayout() {
           <StatusBar style="dark" />
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
+            <Stack.Screen name="discover" />
+            <Stack.Screen name="my-salons" />
+            <Stack.Screen name="invite/[token]" />
             <Stack.Screen name="book/[slug]" />
             <Stack.Screen name="cancel/[token]" />
           </Stack>

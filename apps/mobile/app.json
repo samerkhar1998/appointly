@@ -12,13 +12,28 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.appointly.app"
+      "bundleIdentifier": "com.appointly.app",
+      "associatedDomains": ["applinks:appointly.co"]
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#7C3AED"
       },
-      "package": "com.appointly.app"
+      "package": "com.appointly.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "appointly.co",
+              "pathPrefixes": ["/invite", "/book", "/cancel", "/my-salons"]
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "plugins": [
       "expo-router",
