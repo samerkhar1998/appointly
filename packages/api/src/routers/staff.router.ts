@@ -44,6 +44,7 @@ export const staffRouter = createTRPCRouter({
         display_name: z.string().min(1).max(100),
         email: z.string().email(),
         bio: z.string().max(500).optional(),
+        avatar_url: z.string().url().optional(),
         is_bookable: z.boolean().default(true),
       }),
     )
@@ -88,6 +89,7 @@ export const staffRouter = createTRPCRouter({
             salon_member_id: memberId,
             display_name: input.display_name,
             bio: input.bio,
+            avatar_url: input.avatar_url,
             is_bookable: input.is_bookable,
           },
         });

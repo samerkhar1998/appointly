@@ -435,7 +435,6 @@ export function ShopPage() {
                     aspect="square"
                     label="+ תמונה"
                     disabled={isBusy}
-                    className="w-20"
                   />
                 )}
               </div>

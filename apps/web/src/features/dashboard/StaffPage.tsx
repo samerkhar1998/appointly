@@ -80,11 +80,13 @@ export function StaffPage() {
 
   function onSubmit(values: CreateStaffForm) {
     if (!salon?.id) return;
-    const { avatar_url, ...rest } = values;
     createMutation.mutate({
       salon_id: salon.id,
-      ...rest,
-      ...(avatar_url ? { avatar_url } : {}),
+      display_name: values.display_name,
+      email: values.email,
+      bio: values.bio,
+      is_bookable: values.is_bookable,
+      ...(values.avatar_url ? { avatar_url: values.avatar_url } : {}),
     });
   }
 
