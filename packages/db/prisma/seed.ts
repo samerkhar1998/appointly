@@ -1,6 +1,17 @@
 import { PrismaClient } from '../src/generated/client/index.js';
+import { scrypt, randomBytes } from 'crypto';
+import { promisify } from 'util';
 
 const prisma = new PrismaClient();
+const scryptAsync = promisify(scrypt);
+
+// Hashes a password with scrypt (same algorithm used by the auth router).
+// Returns "salt_hex:hash_hex".
+async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16).toString('hex');
+  const hash = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${salt}:${hash.toString('hex')}`;
+}
 
 async function main() {
   console.log('🌱 Seeding database...');
@@ -56,8 +67,7 @@ async function main() {
       email: 'owner@demo-salon.co.il',
       phone: '+972501234567',
       name: 'Demo Owner',
-      // bcrypt hash of "password123" — replace before production
-      password_hash: '$2b$10$rQJ5A.8/AqnOQhU1VYQhieBR9Xk7v2pA5O9V3vLU3ROBLXTiGpz2y',
+      password_hash: await hashPassword('password123'),
       global_role: 'SALON_OWNER',
     },
   });

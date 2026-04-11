@@ -2,6 +2,22 @@
 
 # FULL-STACK APP RULES (Salon Booking Platform)
 
+## Build Phases — Completion Status
+
+| Phase | Description | Status |
+|---|---|---|
+| 1 | Monorepo scaffold (Turborepo, Next.js 14, Prisma, tRPC v11) | ✅ Done |
+| 2 | Dashboard UI shell — sidebar, calendar, services, staff, clients | ✅ Done |
+| 3 | Full Prisma schema + all tRPC routers | ✅ Done |
+| 4 | Booking flow (5-step), cancel page, all dashboard pages wired to tRPC | ✅ Done |
+| 5 | Auth — email/password (scrypt), Google OAuth, registration page, JWT cookies | ✅ Done |
+| 6 | Notification service (Twilio/Resend), auto-confirm, phone OTP cancellation | ✅ Done |
+| 7 | BullMQ reminder jobs (24h + 1h before appointment) | 🔜 Next |
+| 8 | Cloudinary image uploads (salon logo, staff avatars, product photos) | 🔜 Next |
+| 9 | Mobile app (React Native + Expo) | 🔜 Future |
+
+
+
 ## Stack — Always Use These, No Exceptions
 - **Framework:** Next.js 14 App Router (TypeScript, strict mode)
 - **API:** tRPC v11 + Zod (end-to-end type safety — no REST endpoints)

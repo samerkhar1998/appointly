@@ -114,7 +114,8 @@ model User {
   email         String      @unique
   phone         String?     @unique
   name          String
-  password_hash String
+  password_hash String?
+  google_id     String?     @unique
   global_role   GlobalRole  @default(CUSTOMER)
   is_active     Boolean     @default(true)
 
