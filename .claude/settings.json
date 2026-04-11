@@ -18,7 +18,9 @@
       "Bash(pnpm --filter @appointly/db --filter @appointly/shared --filter @appointly/api --filter @appointly/web typecheck)",
       "Bash(git init:*)",
       "Bash(git remote:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(echo \"exit: $?\")"
     ],
     "additionalDirectories": [
       "/Users/samerkharouba/Documents/appointly/apps/web/src/app/(public)/book",
