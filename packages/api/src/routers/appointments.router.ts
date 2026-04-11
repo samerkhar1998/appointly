@@ -224,6 +224,47 @@ export const appointmentsRouter = createTRPCRouter({
       return updated;
     }),
 
+  // Returns appointment details by cancel token without consuming it.
+  // Used by the cancel page to show what will be cancelled before confirming.
+  getByToken: publicProcedure
+    .input(z.object({ token: z.string().uuid() }))
+    .query(async ({ input, ctx }) => {
+      const appointment = await ctx.db.appointment.findFirst({
+        where: { cancel_token: input.token, cancel_token_used: false },
+        select: {
+          id: true,
+          start_datetime: true,
+          status: true,
+          customer_name: true,
+          customer_phone: true,
+          salon: { select: { name: true, timezone: true, settings: true } },
+          service: { select: { name: true, duration_mins: true } },
+          staff: { select: { display_name: true } },
+        },
+      });
+
+      if (!appointment) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Cancellation link is invalid or already used',
+        });
+      }
+
+      return {
+        id: appointment.id,
+        customer_name: appointment.customer_name,
+        customer_phone: appointment.customer_phone,
+        start_datetime: appointment.start_datetime.toISOString(),
+        status: appointment.status,
+        salon_name: appointment.salon.name,
+        salon_timezone: appointment.salon.timezone,
+        service_name: appointment.service.name,
+        service_duration: appointment.service.duration_mins,
+        staff_name: appointment.staff?.display_name ?? null,
+        cancellation_window_hours: appointment.salon.settings?.cancellation_window_hours ?? 24,
+      };
+    }),
+
   // Cancels an appointment using a single-use magic-link token.
   // Enforces the salon's cancellation window policy.
   cancelByToken: publicProcedure

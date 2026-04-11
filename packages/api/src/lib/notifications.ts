@@ -42,13 +42,11 @@ export interface AppointmentMessageParams {
 
 export class NotificationService {
   private readonly twilioEnabled: boolean;
-  private readonly resendEnabled: boolean;
   private readonly appUrl: string;
 
   constructor() {
     this.twilioEnabled =
       !!process.env['TWILIO_ACCOUNT_SID'] && !!process.env['TWILIO_AUTH_TOKEN'];
-    this.resendEnabled = !!process.env['RESEND_API_KEY'];
     this.appUrl = process.env['NEXT_PUBLIC_APP_URL'] ?? 'http://localhost:3000';
   }
 
