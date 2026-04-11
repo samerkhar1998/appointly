@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createTRPCRouter, salonOwnerProcedure } from '../trpc.js';
+import { createTRPCRouter, salonOwnerProcedure } from '../trpc';
 
 const periodSchema = z.object({
   salon_id: z.string().cuid(),

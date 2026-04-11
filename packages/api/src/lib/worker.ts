@@ -15,8 +15,8 @@
 
 import { Worker } from 'bullmq';
 import { db } from '@appointly/db';
-import { getRedisConnection, QUEUE_NAME, type ReminderJobData } from './queue.js';
-import { notificationService } from './notifications.js';
+import { getRedisConnection, QUEUE_NAME, type ReminderJobData } from './queue';
+import { notificationService } from './notifications';
 
 // ─── Worker ───────────────────────────────────────────────────────────────────
 

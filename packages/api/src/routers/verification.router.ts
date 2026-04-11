@@ -1,8 +1,8 @@
 import { TRPCError } from '@trpc/server';
 import { createHmac, randomUUID } from 'crypto';
-import { createTRPCRouter, publicProcedure } from '../trpc.js';
+import { createTRPCRouter, publicProcedure } from '../trpc';
 import { sendOTPSchema, verifyOTPSchema } from '@appointly/shared';
-import { notificationService } from '../lib/notifications.js';
+import { notificationService } from '../lib/notifications';
 
 const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_ATTEMPTS = 5;

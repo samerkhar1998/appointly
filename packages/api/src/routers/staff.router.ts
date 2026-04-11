@@ -1,6 +1,6 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { createTRPCRouter, publicProcedure, salonOwnerProcedure } from '../trpc.js';
+import { createTRPCRouter, publicProcedure, salonOwnerProcedure } from '../trpc';
 import { createStaffSchema, updateStaffSchema, staffScheduleSchema, addBlockedTimeSchema } from '@appointly/shared';
 
 export const staffRouter = createTRPCRouter({

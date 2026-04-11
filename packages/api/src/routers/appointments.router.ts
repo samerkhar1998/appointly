@@ -1,10 +1,10 @@
 import { TRPCError } from '@trpc/server';
 import { createHmac } from 'crypto';
 import { z } from 'zod';
-import { createTRPCRouter, publicProcedure, salonOwnerProcedure } from '../trpc.js';
+import { createTRPCRouter, publicProcedure, salonOwnerProcedure } from '../trpc';
 import { createBookingSchema, cancelByTokenSchema } from '@appointly/shared';
-import { notificationService } from '../lib/notifications.js';
-import { scheduleReminders, cancelReminders } from '../lib/queue.js';
+import { notificationService } from '../lib/notifications';
+import { scheduleReminders, cancelReminders } from '../lib/queue';
 
 const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_OTP_ATTEMPTS = 5;

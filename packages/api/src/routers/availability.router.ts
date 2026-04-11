@@ -1,5 +1,5 @@
 import { TRPCError } from '@trpc/server';
-import { createTRPCRouter, publicProcedure } from '../trpc.js';
+import { createTRPCRouter, publicProcedure } from '../trpc';
 import { getAvailabilitySchema } from '@appointly/shared';
 
 export interface TimeSlot {

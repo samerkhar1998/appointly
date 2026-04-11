@@ -1,9 +1,9 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import * as jose from 'jose';
-import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc.js';
+import { createTRPCRouter, publicProcedure, protectedProcedure } from '../trpc';
 import { loginSchema, registerSchema } from '@appointly/shared';
-import { hashPassword, verifyPassword } from '../lib/password.js';
+import { hashPassword, verifyPassword } from '../lib/password';
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env['JWT_SECRET'] ?? 'dev-secret-change-in-production',

@@ -4,7 +4,7 @@ import {
   createTRPCRouter,
   publicProcedure,
   salonOwnerProcedure,
-} from '../trpc.js';
+} from '../trpc';
 import {
   createSalonSchema,
   updateSalonSchema,

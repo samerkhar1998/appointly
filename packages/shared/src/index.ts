@@ -1,26 +1,26 @@
 // Auth
-export * from './schemas/auth.js';
+export * from './schemas/auth';
 
 // Verification
-export * from './schemas/verification.js';
+export * from './schemas/verification';
 
 // Booking
-export * from './schemas/booking.js';
+export * from './schemas/booking';
 
 // Salon
-export * from './schemas/salon.js';
+export * from './schemas/salon';
 
 // Staff
-export * from './schemas/staff.js';
+export * from './schemas/staff';
 
 // Service
-export * from './schemas/service.js';
+export * from './schemas/service';
 
 // Product
-export * from './schemas/product.js';
+export * from './schemas/product';
 
 // Promo
-export * from './schemas/promo.js';
+export * from './schemas/promo';
 
 // Availability
-export * from './schemas/availability.js';
+export * from './schemas/availability';
