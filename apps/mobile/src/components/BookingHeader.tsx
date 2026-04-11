@@ -1,18 +1,44 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, shadows, spacing } from '@/lib/theme';
+import { colors, fontSize, radius, shadows, spacing } from '@/lib/theme';
+import { t } from '@/lib/strings';
 
 interface Props {
   salonName: string;
   logoUrl?: string | null;
+  // When false the back button is hidden (e.g. first step or confirmation).
+  showBack?: boolean;
 }
 
-export function BookingHeader({ salonName, logoUrl }: Props) {
+// Sticky header used across every step of the booking flow.
+// Renders the salon logo + name on the right and an optional back button on the left.
+// The back button calls router.back(), relying on Expo Router's navigation stack.
+export function BookingHeader({ salonName, logoUrl, showBack = true }: Props) {
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing[3] }]}>
-      <View style={styles.inner}>
+      {/* Back button — left side. Hidden on first step but kept in layout so
+          the salon name doesn't shift. */}
+      <Pressable
+        onPress={() => router.back()}
+        style={({ pressed }) => [
+          styles.backBtn,
+          pressed && styles.backBtnPressed,
+          !showBack && styles.invisible,
+        ]}
+        disabled={!showBack}
+        accessibilityRole="button"
+        accessibilityLabel={t('back')}
+        hitSlop={12}
+      >
+        <Text style={styles.backArrow}>→</Text>
+        <Text style={styles.backLabel}>{t('back')}</Text>
+      </Pressable>
+
+      {/* Salon identity — right side */}
+      <View style={styles.identity}>
         {logoUrl ? (
           <Image source={{ uri: logoUrl }} style={styles.logo} resizeMode="cover" />
         ) : (
@@ -36,39 +62,63 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     paddingBottom: spacing[3],
     paddingHorizontal: spacing[4],
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     ...shadows.card,
   },
-  inner: {
+
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+    paddingVertical: spacing[1],
+    paddingEnd: spacing[2],
+  },
+  backBtnPressed: { opacity: 0.5 },
+  invisible: { opacity: 0 },
+
+  backArrow: {
+    fontSize: fontSize.lg,
+    color: colors.brand[600],
+    lineHeight: fontSize.lg + 2,
+  },
+  backLabel: {
+    fontFamily: 'Heebo_500Medium',
+    fontSize: fontSize.sm,
+    color: colors.brand[600],
+  },
+
+  identity: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
     gap: spacing[3],
+    flex: 1,
+    justifyContent: 'flex-start',
   },
   logo: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: radius.lg,
   },
   logoFallback: {
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: radius.lg,
     backgroundColor: colors.brand[600],
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoFallbackText: {
-    color: colors.white,
-    fontSize: 18,
-  },
+  logoFallbackText: { color: colors.white, fontSize: 18 },
   name: {
     fontFamily: 'Heebo_700Bold',
-    fontSize: 16,
+    fontSize: fontSize.base,
     color: colors.foreground,
     textAlign: 'right',
   },
   sub: {
     fontFamily: 'Heebo_400Regular',
-    fontSize: 12,
+    fontSize: fontSize.xs,
     color: colors.muted,
     textAlign: 'right',
   },

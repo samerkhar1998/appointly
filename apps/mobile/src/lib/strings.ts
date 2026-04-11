@@ -106,6 +106,42 @@ export const he = {
 
   // Details labels on cards
   detail_duration: 'דקות',
+
+  // Discovery screen
+  discover_title: 'גלה עסקים',
+  discover_subtitle: 'מצא סלון, מספרה או קליניקה וקבע תור',
+  discover_search_placeholder: 'חפש לפי שם או עיר...',
+  discover_empty: 'לא נמצאו עסקים',
+  discover_empty_query: 'נסה חיפוש אחר',
+  discover_clear: 'נקה חיפוש',
+  discover_book: 'קבע תור',
+
+  // My Salons screen
+  my_salons_title: 'העסקים שלי',
+  my_salons_subtitle: 'הכנס מספר טלפון לצפייה בעסקים שלך',
+  my_salons_phone_label: 'מספר טלפון',
+  my_salons_search_cta: 'חפש',
+  my_salons_empty: 'לא נמצאו עסקים',
+  my_salons_empty_sub: 'לא קבעת תורים עם מספר זה בעבר',
+  my_salons_discover_cta: 'גלה עסקים חדשים',
+  my_salons_results: 'עסקים שביקרת',
+
+  // Invite screen
+  invite_private_badge: 'עסק פרטי',
+  invite_invited: 'הוזמנת אישית',
+  invite_cta: 'קבע תור',
+  invite_invalid_title: 'קישור לא תקף',
+  invite_invalid_sub: 'קישור ההזמנה לא תקף או שפג תוקפו.',
+
+  // Private salon gate (in booking flow)
+  booking_private_title: 'עסק פרטי',
+  booking_private_sub: 'עסק זה פרטי. כדי לקבוע תור תצטרך קישור הזמנה אישי מבעל העסק.',
+  booking_private_cta: 'חזור לגילוי עסקים',
+
+  // Home updated
+  home_discover_cta: 'גלה עסקים',
+  home_my_salons_cta: 'העסקים שלי',
+  home_direct_label: 'כניסה ישירה לעסק',
 } as const;
 
 export type StringKey = keyof typeof he;

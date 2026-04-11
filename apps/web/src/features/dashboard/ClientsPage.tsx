@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Users, Phone, Mail, CalendarCheck, Ban, ShieldCheck, ChevronRight, ChevronLeft, StickyNote, X } from 'lucide-react';
+import { Search, Users, Phone, Mail, CalendarCheck, Ban, ShieldCheck, ChevronRight, ChevronLeft, StickyNote, X, Trash2 } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { useSalon } from '@/lib/use-salon';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,7 @@ export function ClientsPage() {
   const [page, setPage] = useState(1);
   const [noteDialog, setNoteDialog] = useState<{ id: string; name: string; notes: string } | null>(null);
   const [noteText, setNoteText] = useState('');
+  const [removeConfirm, setRemoveConfirm] = useState<{ id: string; name: string } | null>(null);
   const utils = trpc.useUtils();
 
   // Debounce search
@@ -68,6 +69,15 @@ export function ClientsPage() {
     onSuccess: () => {
       utils.salonClients.list.invalidate();
       toast({ title: 'חסימה הוסרה' });
+    },
+    onError: (err) => toast({ title: 'שגיאה', description: err.message, variant: 'destructive' }),
+  });
+
+  const removeMutation = trpc.salonClients.remove.useMutation({
+    onSuccess: () => {
+      utils.salonClients.list.invalidate();
+      setRemoveConfirm(null);
+      toast({ title: 'הלקוח הוסר מהרשימה' });
     },
     onError: (err) => toast({ title: 'שגיאה', description: err.message, variant: 'destructive' }),
   });
@@ -226,6 +236,13 @@ export function ClientsPage() {
                             <Ban className="h-4 w-4" />
                           </button>
                         )}
+                        <button
+                          onClick={() => setRemoveConfirm({ id: client.id, name: client.name })}
+                          className="p-2 rounded-lg text-muted hover:text-red-500 hover:bg-red-50 transition-colors"
+                          title="הסר לקוח"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -266,6 +283,38 @@ export function ClientsPage() {
           </div>
         )}
       </div>
+
+      {/* Remove confirmation dialog */}
+      <Dialog open={!!removeConfirm} onOpenChange={() => setRemoveConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>הסרת לקוח</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted leading-relaxed">
+            האם להסיר את <span className="font-semibold text-foreground">{removeConfirm?.name}</span>{' '}
+            מרשימת הלקוחות? העסק לא יופיע יותר ברשימת העסקים שלהם.
+          </p>
+          <DialogFooter>
+            <Button
+              variant="destructive"
+              onClick={() =>
+                removeConfirm && removeMutation.mutate({ client_id: removeConfirm.id })
+              }
+              disabled={removeMutation.isPending}
+              className="w-full sm:w-auto"
+            >
+              {removeMutation.isPending ? 'מסיר...' : 'הסר לקוח'}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setRemoveConfirm(null)}
+              className="w-full sm:w-auto"
+            >
+              ביטול
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Note dialog */}
       <Dialog open={!!noteDialog} onOpenChange={() => setNoteDialog(null)}>

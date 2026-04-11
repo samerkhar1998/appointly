@@ -51,5 +51,19 @@ export const salonSettingsSchema = z.object({
   buffer_after_mins: z.number().int().min(0).max(120),
 });
 
+export const salonSearchSchema = z.object({
+  query: z.string().max(100).optional(),
+  city: z.string().max(100).optional(),
+  page: z.number().int().positive().default(1),
+  per_page: z.number().int().min(1).max(50).default(12),
+});
+
+export const createInviteSchema = z.object({
+  salon_id: z.string().cuid(),
+  expires_at: z.string().datetime().optional(),
+});
+
 export type CreateSalonInput = z.infer<typeof createSalonSchema>;
 export type SalonSettingsInput = z.infer<typeof salonSettingsSchema>;
+export type SalonSearchInput = z.infer<typeof salonSearchSchema>;
+export type CreateInviteInput = z.infer<typeof createInviteSchema>;

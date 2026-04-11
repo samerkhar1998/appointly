@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, MessageCircle, Clock, Settings2, Store } from 'lucide-react';
+import { Loader2, MessageCircle, Clock, Settings2, Store, Globe, Lock, Copy, Check, Link as LinkIcon } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { useSalon } from '@/lib/use-salon';
 import { ImageUpload } from '@/components/ui/image-upload';
@@ -135,6 +135,7 @@ function Section({
 export function SettingsPage() {
   const { salon, isLoading: salonLoading } = useSalon();
   const utils = trpc.useUtils();
+  const appUrl = process.env['NEXT_PUBLIC_APP_URL'] ?? '';
 
   // ── Remote data ──
   const { data: salonFull, isLoading: fullLoading } = trpc.salons.getBySlug.useQuery(
@@ -251,6 +252,43 @@ export function SettingsPage() {
     },
     onError: (err) => toast({ title: 'שגיאה', description: err.message, variant: 'destructive' }),
   });
+
+  // ── Visibility ──
+  const [isPublic, setIsPublic] = useState<boolean>(true);
+  const [copied, setCopied] = useState(false);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (salonFull) {
+      setIsPublic((salonFull as unknown as { is_public?: boolean }).is_public ?? true);
+    }
+  }, [salonFull]);
+
+  const updateVisibilityMutation = trpc.salons.updateVisibility.useMutation({
+    onSuccess: (data) => {
+      setIsPublic(data.is_public);
+      utils.salons.getBySlug.invalidate();
+      toast({ title: data.is_public ? 'העסק הפך לציבורי' : 'העסק הפך לפרטי' });
+    },
+    onError: (err) => toast({ title: 'שגיאה', description: err.message, variant: 'destructive' }),
+  });
+
+  const createInviteMutation = trpc.salons.createInvite.useMutation({
+    onSuccess: (data) => {
+      const link = `${appUrl}/invite/${data.token}`;
+      setInviteLink(link);
+    },
+    onError: (err) => toast({ title: 'שגיאה', description: err.message, variant: 'destructive' }),
+  });
+
+  // Copies the generated invite link to the clipboard.
+  function copyInviteLink() {
+    if (!inviteLink) return;
+    navigator.clipboard.writeText(inviteLink).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   function onInfoSubmit(values: InfoForm) {
     if (!salon?.id) return;
@@ -530,6 +568,104 @@ export function SettingsPage() {
             </Button>
           </div>
         </form>
+      </Section>
+
+      {/* ── Visibility & Access ───────────────────────────────────────────── */}
+      <Section
+        icon={Globe}
+        title="חשיפה ונגישות"
+        description="שלוט מי יכול למצוא ולהזמין תורים בעסק שלך"
+      >
+        <div className="space-y-5">
+          {/* Public / Private toggle */}
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                {isPublic ? (
+                  <Globe className="h-4 w-4 text-emerald-600 shrink-0" />
+                ) : (
+                  <Lock className="h-4 w-4 text-brand-600 shrink-0" />
+                )}
+                <p className="text-sm font-medium text-foreground">
+                  {isPublic ? 'עסק ציבורי' : 'עסק פרטי'}
+                </p>
+              </div>
+              <p className="text-xs text-muted leading-relaxed">
+                {isPublic
+                  ? 'העסק מופיע בחיפוש הציבורי — כל אחד יכול למצוא אותך ולקבוע תור.'
+                  : 'העסק לא מופיע בחיפוש — רק לקוחות עם קישור הזמנה יכולים לקבוע תור.'}
+              </p>
+            </div>
+            <Switch
+              checked={isPublic}
+              disabled={updateVisibilityMutation.isPending}
+              onCheckedChange={(checked) => {
+                if (!salon?.id) return;
+                setIsPublic(checked);
+                updateVisibilityMutation.mutate({ salon_id: salon.id, is_public: checked });
+              }}
+              aria-label="עסק ציבורי"
+            />
+          </div>
+
+          <Separator />
+
+          {/* Invite link generator */}
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-medium text-foreground flex items-center gap-1.5 mb-0.5">
+                <LinkIcon className="h-4 w-4 text-brand-600" />
+                קישור הזמנה אישי
+              </p>
+              <p className="text-xs text-muted">
+                שלח קישור ייחודי ללקוח כדי לאפשר לו לקבוע תור — גם אם העסק פרטי.
+              </p>
+            </div>
+
+            {inviteLink ? (
+              <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0 rounded-xl border border-border bg-surface-elevated px-3 py-2">
+                  <p className="text-xs text-muted truncate" dir="ltr">
+                    {inviteLink}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={copyInviteLink}
+                  className="shrink-0 gap-1.5"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-emerald-600" />
+                      הועתק
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" />
+                      העתק
+                    </>
+                  )}
+                </Button>
+              </div>
+            ) : null}
+
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={createInviteMutation.isPending || !salon?.id}
+              onClick={() => salon?.id && createInviteMutation.mutate({ salon_id: salon.id })}
+              className="gap-1.5"
+            >
+              {createInviteMutation.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <LinkIcon className="h-3.5 w-3.5" />
+              )}
+              {inviteLink ? 'צור קישור חדש' : 'צור קישור הזמנה'}
+            </Button>
+          </div>
+        </div>
       </Section>
 
       {/* ── WhatsApp Settings ─────────────────────────────────────────────── */}
