@@ -14,7 +14,23 @@
 | 6 | Notification service (Twilio/Resend), auto-confirm, phone OTP cancellation | ✅ Done |
 | 7 | BullMQ reminder jobs (24h + 1h before appointment) | ✅ Done |
 | 8 | Cloudinary image uploads (salon logo, staff avatars, product photos) | ✅ Done |
-| 9 | Mobile app (React Native + Expo) | 🔜 Future |
+| 9 | Mobile app (React Native + Expo) | ✅ Done |
+| 10 | Test suite — happy-path tests for every tRPC procedure | 🔜 Next |
+| 11 | Tranzila payment integration — subscription billing + plan enforcement | 🔜 Next |
+| 12 | Expo Push Notifications — booking confirmations + reminders on mobile | 🔜 Next |
+| 13 | Production deployment — Vercel + Supabase + Upstash + EAS Build | 🔜 Next |
+| 14 | App Store + Play Store submission via EAS | 🔜 Next |
+
+## Immediate Gaps (known issues to fix before shipping)
+
+| Gap | Location | Notes |
+|-----|----------|-------|
+| OTP rate limit missing | `verification.router.ts`, `appointments.router.ts` | CLAUDE.md requires 3 sends/hour per phone; currently only attempt-count limit exists |
+| No test coverage | All tRPC routers | Every procedure needs at least one happy-path test |
+| Tranzila not wired | `plan/page.tsx` upgrade CTAs → nowhere | `Subscription` model exists in schema; no payment flow implemented |
+| Mobile push notifications | `apps/mobile` | Expo Notifications not set up; customers get no native push alerts |
+| `?client=TOKEN` not handled on mobile | `apps/mobile/app/book/[slug]/index.tsx` | Web supports pre-fill + OTP skip; mobile ignores the param |
+| Reviews router/UI missing | Schema has `Review` model | No router, no dashboard UI, no post-appointment prompt |
 
 
 
