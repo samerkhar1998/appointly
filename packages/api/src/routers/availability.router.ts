@@ -14,7 +14,7 @@ function parseLocalTime(timeStr: string, date: Date, tzOffsetMinutes: number): D
   const h = parseInt(hStr ?? '0', 10);
   const m = parseInt(mStr ?? '0', 10);
   const localMs =
-    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), h, m) -
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate(), h, m) +
     tzOffsetMinutes * 60_000;
   return new Date(localMs);
 }
@@ -123,10 +123,12 @@ export const availabilityRouter = createTRPCRouter({
       if (windowEnd <= windowStart) continue;
 
       // ── 4b. Load existing appointments ───────────────────────────────────
+      // Include all non-cancelled statuses so COMPLETED/NO_SHOW appointments
+      // still block their original time slots.
       const appointments = await ctx.db.appointment.findMany({
         where: {
           staff_id: staff.id,
-          status: { in: ['PENDING', 'CONFIRMED'] },
+          status: { not: 'CANCELLED' },
           start_datetime: { gte: dayStart },
           end_datetime: { lte: dayEnd },
         },
@@ -149,10 +151,17 @@ export const availabilityRouter = createTRPCRouter({
       ];
 
       // ── 4d. Generate candidate slots ─────────────────────────────────────
-      let cursor = windowStart.getTime();
-      const windowEndMs = windowEnd.getTime();
+      // Advance the cursor past any time that has already passed.
+      // A 15-minute lead-time gives the client enough time to complete checkout.
+      // Round up to the next slot-interval boundary so displayed times stay clean.
+      const LEAD_TIME_MS = 15 * 60_000;
       const slotIntervalMs = slotIntervalMins * 60_000;
       const totalMs = totalMins * 60_000;
+      const windowEndMs = windowEnd.getTime();
+      const earliestAllowed = Date.now() + LEAD_TIME_MS;
+      const rawCursor = Math.max(windowStart.getTime(), earliestAllowed);
+      const intervals = Math.ceil((rawCursor - windowStart.getTime()) / slotIntervalMs);
+      let cursor = windowStart.getTime() + intervals * slotIntervalMs;
 
       while (cursor + totalMs <= windowEndMs) {
         const slotStart = new Date(cursor);

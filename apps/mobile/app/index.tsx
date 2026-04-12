@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -10,8 +9,6 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { colors, fontSize, radius, shadows, spacing } from '@/lib/theme';
 import { t } from '@/lib/strings';
 
@@ -54,22 +51,9 @@ function ActionCard({
 }
 
 // Home / landing screen.
-// Shows two primary CTAs (Discover, My Salons) and a secondary direct-slug field.
+// Shows two primary CTAs: Discover and My Salons.
 export default function HomeScreen() {
-  const [slug, setSlug] = useState('');
-  const [error, setError] = useState('');
-  const [showDirect, setShowDirect] = useState(false);
   const insets = useSafeAreaInsets();
-
-  function handleDirectContinue() {
-    const trimmed = slug.trim().toLowerCase();
-    if (!trimmed) {
-      setError(t('home_slug_empty'));
-      return;
-    }
-    setError('');
-    router.push(`/book/${trimmed}`);
-  }
 
   return (
     <KeyboardAvoidingView
@@ -109,33 +93,6 @@ export default function HomeScreen() {
           />
         </View>
 
-        {/* Direct entry — collapsed by default */}
-        <Pressable
-          onPress={() => setShowDirect((v) => !v)}
-          style={styles.directToggle}
-        >
-          <Text style={styles.directToggleText}>{t('home_direct_label')}</Text>
-          <Text style={styles.directToggleChevron}>{showDirect ? '▲' : '▼'}</Text>
-        </Pressable>
-
-        {showDirect && (
-          <View style={styles.directCard}>
-            <Input
-              label={t('home_slug_placeholder')}
-              placeholder="demo-salon"
-              value={slug}
-              onChangeText={(v) => { setSlug(v); setError(''); }}
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="go"
-              onSubmitEditing={handleDirectContinue}
-              error={error}
-            />
-            <Button onPress={handleDirectContinue} size="lg" style={styles.directCta}>
-              {t('home_cta')}
-            </Button>
-          </View>
-        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -224,33 +181,4 @@ const styles = StyleSheet.create({
   },
   actionArrowBrand: { color: colors.brand[200] },
 
-  // Direct entry toggle
-  directToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing[2],
-    paddingVertical: spacing[2],
-  },
-  directToggleText: {
-    fontFamily: 'Heebo_500Medium',
-    fontSize: fontSize.sm,
-    color: colors.muted,
-  },
-  directToggleChevron: {
-    fontSize: 10,
-    color: colors.muted,
-  },
-
-  // Direct entry card
-  directCard: {
-    backgroundColor: colors.white,
-    borderRadius: radius['2xl'],
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing[5],
-    gap: spacing[4],
-    ...shadows.card,
-  },
-  directCta: { marginTop: spacing[1] },
 });

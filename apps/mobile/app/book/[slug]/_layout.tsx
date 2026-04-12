@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, Stack, useLocalSearchParams, useSegments } from 'expo-router';
 import { trpc } from '@/lib/trpc';
 import { useBookingStore } from '@/store/booking';
 import { BookingHeader } from '@/components/BookingHeader';
@@ -35,6 +35,9 @@ export default function BookingLayout() {
   }>();
   const setBooking = useBookingStore((s) => s.setBooking);
   const resetBooking = useBookingStore((s) => s.resetBooking);
+
+  const segments = useSegments();
+  const isConfirmation = segments[segments.length - 1] === 'confirmation';
 
   const { data: salon, isLoading, isError } = trpc.salons.getBySlug.useQuery(
     { slug: slug ?? '' },
@@ -82,14 +85,14 @@ export default function BookingLayout() {
 
   return (
     <View style={styles.flex}>
-      <BookingHeader salonName={salon.name} logoUrl={salon.logo_url} />
+      <BookingHeader salonName={salon.name} logoUrl={salon.logo_url} showBack={!isConfirmation} />
       <Stack screenOptions={{ headerShown: false, animation: 'slide_from_left' }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="staff" />
         <Stack.Screen name="datetime" />
         <Stack.Screen name="details" />
         <Stack.Screen name="otp" />
-        <Stack.Screen name="confirmation" />
+        <Stack.Screen name="confirmation" options={{ gestureEnabled: false }} />
       </Stack>
     </View>
   );

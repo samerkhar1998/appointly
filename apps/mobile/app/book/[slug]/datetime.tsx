@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,7 +28,6 @@ function formatDayLabel(d: Date): { weekday: string; day: string } {
   return { weekday, day };
 }
 
-const TODAY = new Date();
 const DAYS_TO_SHOW = 14;
 
 export default function DateTimeScreen() {
@@ -36,9 +35,13 @@ export default function DateTimeScreen() {
   const booking = useBookingStore((s) => s.booking);
   const setBooking = useBookingStore((s) => s.setBooking);
   const insets = useSafeAreaInsets();
+  const dateStripRef = useRef<ScrollView>(null);
 
-  const dates = Array.from({ length: DAYS_TO_SHOW }, (_, i) => addDays(TODAY, i));
-  const [selectedDate, setSelectedDate] = useState<Date>(TODAY);
+  // Compute today fresh on each screen mount — avoids stale date if app stays open overnight.
+  const today = new Date();
+  const dates = Array.from({ length: DAYS_TO_SHOW }, (_, i) => addDays(today, i));
+  const [selectedDate, setSelectedDate] = useState<Date>(today);
+
 
   const dateStr = toDateString(selectedDate);
 
@@ -64,9 +67,11 @@ export default function DateTimeScreen() {
       {/* Date strip */}
       <View style={styles.dateStrip}>
         <ScrollView
+          ref={dateStripRef}
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.dateStripContent}
+          onContentSizeChange={() => dateStripRef.current?.scrollToEnd({ animated: false })}
         >
           {dates.map((d) => {
             const ds = toDateString(d);

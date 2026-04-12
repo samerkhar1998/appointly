@@ -220,10 +220,17 @@ UPSTASH_REDIS_REST_TOKEN=
 
 # ── App ───────────────────────────────────────────────────
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# ── Testing (optional — dev / CI only) ───────────────────
+# When set, every OTP uses this fixed code instead of a random 6-digit number.
+# NEVER set this in production.
+# TEST_OTP_CODE=000000
 ```
 
 **Dev shortcuts:** Twilio, Cloudinary, Resend, and Redis are all optional.  
 When their env vars are absent the app stubs them out and logs to the console instead.
+
+`TEST_OTP_CODE` is also optional. When set (e.g. `TEST_OTP_CODE=000000`), every OTP sent to any phone number will use that fixed code — eliminating the need to read the terminal during local development or automated testing. **Never set this in production.**
 
 ---
 
@@ -269,7 +276,7 @@ packages/db/node_modules/.bin/prisma migrate reset \
 ### Auth — email + password
 
 1. Go to `http://localhost:3000/login`
-2. Enter `owner@demo.com` / `password123`
+2. Enter `owner@demo-salon.co.il` / `password123`
 3. You should be redirected to `/dashboard`
 4. Check the browser dev tools → Application → Cookies → `appointly_token` should be set (httpOnly)
 5. Reload — you should stay logged in
@@ -321,6 +328,7 @@ Open `http://localhost:3000/book/demo-salon` in a mobile-sized browser window.
   [DEV] OTP → +9725xxxxxxxx:
   שלום! קוד האימות שלך ל... הוא: 123456
   ```
+- **Faster alternative:** set `TEST_OTP_CODE=000000` in `.env.local` — every OTP will be `000000` so you never need to check the terminal
 - Enter the 6 digits — inputs auto-advance on each digit
 - Auto-verifies when the 6th digit is entered
 - Resend is available after a 60-second cooldown
@@ -406,13 +414,19 @@ Go to `/dashboard/staff`.
 
 - Cards for each staff member
 - Click "הוסף איש צוות" → dialog: display name, email, bio (optional), avatar URL (optional), bookable toggle
-- After creation, click a staff card to open the schedule editor
+- After creation, click "ערוך שעות" on a staff card to open the weekly schedule editor
 - Set working hours for each day of the week
+- Click "חופשות" on a staff card to manage days off:
+  - **Date range** — block a continuous period (e.g. a full week's holiday)
+  - **Specific days** — click individual dates on the mini-calendar to toggle them
+  - In both modes, toggle "כל היום" off to set specific hours (e.g. block only the morning)
+  - All upcoming blocked periods are listed below the form with a remove button
 - Deactivate a staff member — they disappear from the booking flow
 
-**To verify schedule affects availability:**
+**To verify schedule and days off affect availability:**
 1. Set staff working hours for today
 2. Open the booking flow → Date/time step → today's date → slots should appear
+3. Add a days-off block covering today → slots for that staff member should disappear
 
 ---
 
@@ -622,6 +636,7 @@ The web API (`pnpm dev` from the repo root) must be running at the same time.
 **Step 5 — OTP**
 - OTP is sent automatically on screen load
 - In dev mode (no Twilio): check the terminal running `pnpm dev` for the `[DEV] OTP →` log line
+- **Faster alternative:** set `TEST_OTP_CODE=000000` in the web app's `.env.local` — the code will always be `000000`
 - Enter the 6 digits — inputs auto-advance; auto-submits when the 6th digit is entered
 - Resend available after a 60-second cooldown
 
@@ -767,7 +782,7 @@ All appointment queries scope by `salon_id`. No cross-salon data leakage is poss
 | `auth` | `login`, `logout`, `me`, `register`, `changePassword` |
 | `salons` | `create`, `getBySlug`, `update`, `updateHours` |
 | `salonSettings` | `get`, `update` |
-| `staff` | `list` (public), `listAll`, `createSimple`, `update`, `deactivate`, `setSchedule`, `addBlockedTime` |
+| `staff` | `list` (public), `listAll`, `createSimple`, `update`, `deactivate`, `setSchedule`, `addBlockedTime`, `listBlockedTimes`, `removeBlockedTime` |
 | `services` | `list` (public), `listAll`, `create`, `update`, `toggle` |
 | `availability` | `getSlots` (public) |
 | `appointments` | `create` (public), `getByToken` (public), `list`, `listForCalendar`, `confirm`, `decline`, `cancelByToken` (public), `requestOTP` (public), `cancelByOTP` (public), `updateStatus` |

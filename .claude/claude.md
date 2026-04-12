@@ -26,7 +26,7 @@
 
 | Gap | Location | Notes |
 |-----|----------|-------|
-| OTP rate limit missing | `verification.router.ts`, `appointments.router.ts` | CLAUDE.md requires 3 sends/hour per phone; currently only attempt-count limit exists |
+| OTP rate limit missing | `verification.router.ts`, `appointments.router.ts` | Requires 3 sends/hour per phone; currently only attempt-count limit exists |
 | No test coverage | All tRPC routers | Every procedure needs at least one happy-path test |
 | Tranzila not wired | `plan/page.tsx` upgrade CTAs → nowhere | `Subscription` model exists in schema; no payment flow implemented |
 | Mobile push notifications | `apps/mobile` | Expo Notifications not set up; customers get no native push alerts |
@@ -175,6 +175,8 @@ UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
 App
 NEXT_PUBLIC_APP_URL=
+Testing (optional — dev/test only)
+TEST_OTP_CODE=   ← when set, every OTP uses this fixed code instead of a random one (e.g. "000000"); NEVER set in production
 
 ## What Claude Should Always Do
 - Read the `frontend-design` skill before any UI work

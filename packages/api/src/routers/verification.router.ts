@@ -32,7 +32,8 @@ export const verificationRouter = createTRPCRouter({
       data: { expires_at: new Date() },
     });
 
-    const code = Math.floor(100_000 + Math.random() * 900_000).toString();
+    // In test/dev environments, TEST_OTP_CODE overrides the random code (e.g. "000000").
+    const code = process.env['TEST_OTP_CODE'] ?? Math.floor(100_000 + Math.random() * 900_000).toString();
     const code_hash = hashOtp(code, input.phone);
 
     await ctx.db.phoneVerification.create({
