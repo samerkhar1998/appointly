@@ -110,6 +110,15 @@ export default function ConfirmationScreen() {
       >
         {t('confirmation_book_another')}
       </Button>
+
+      <Button
+        onPress={() => router.replace('/' as never)}
+        variant="ghost"
+        size="lg"
+        style={styles.newBtn}
+      >
+        {t('confirmation_go_home')}
+      </Button>
     </ScrollView>
   );
 }

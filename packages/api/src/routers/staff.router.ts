@@ -163,4 +163,29 @@ export const staffRouter = createTRPCRouter({
         data: { staff_id: input.staff_id, start_datetime: start, end_datetime: end, reason: input.reason },
       });
     }),
+
+  // Returns all upcoming (and ongoing) blocked periods for a staff member, ordered by start date.
+  // staff_id: cuid of the staff member
+  // Returns an array of StaffBlockedTime records.
+  listBlockedTimes: salonOwnerProcedure
+    .input(z.object({ staff_id: z.string().cuid() }))
+    .query(async ({ input, ctx }) => {
+      return ctx.db.staffBlockedTime.findMany({
+        where: {
+          staff_id: input.staff_id,
+          end_datetime: { gte: new Date() },
+        },
+        orderBy: { start_datetime: 'asc' },
+      });
+    }),
+
+  // Deletes a single blocked-time record by its id.
+  // id: cuid of the StaffBlockedTime record
+  // Returns { success: true } on completion.
+  removeBlockedTime: salonOwnerProcedure
+    .input(z.object({ id: z.string().cuid() }))
+    .mutation(async ({ input, ctx }) => {
+      await ctx.db.staffBlockedTime.delete({ where: { id: input.id } });
+      return { success: true };
+    }),
 });

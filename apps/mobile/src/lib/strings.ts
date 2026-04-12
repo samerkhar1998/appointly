@@ -82,6 +82,7 @@ export const he = {
   confirmation_time: 'שעה',
   confirmation_staff: 'איש צוות',
   confirmation_book_another: 'קבע תור נוסף',
+  confirmation_go_home: 'חזרה לדף הבית',
   confirmation_error: 'לא ניתן לשמור את התור. אנא נסה שוב.',
 
   // Cancel page
