@@ -41,7 +41,7 @@ export default function DetailsScreen() {
       customer_phone: normalisePhone(data.phone),
       customer_email: data.email ?? '',
     });
-    router.push(`/book/${slug}/otp`);
+    router.push(`/book/${slug}/otp` as never);
   }
 
   const tz = booking.salon_timezone ?? 'Asia/Jerusalem';

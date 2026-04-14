@@ -40,9 +40,8 @@ export default function ConfirmationScreen() {
     if (!b.verification_token || !b.service_id || !b.salon_id || !b.start_datetime) return;
 
     createAppt.mutate({
-      salon_id: b.salon_id,
       service_id: b.service_id,
-      staff_id: b.staff_id ?? undefined,
+      staff_id: b.staff_id ?? null,
       start_datetime: b.start_datetime,
       customer_name: b.customer_name,
       customer_phone: b.customer_phone,

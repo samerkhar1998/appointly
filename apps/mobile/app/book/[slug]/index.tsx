@@ -6,6 +6,7 @@ import { useBookingStore } from '@/store/booking';
 import { BookingProgress } from '@/components/BookingProgress';
 import { Card } from '@/components/ui/Card';
 import { SkeletonCard } from '@/components/ui/Skeleton';
+import { Icon } from '@/components/ui/Icon';
 import { formatPrice } from '@/lib/utils';
 import { colors, fontSize, radius, shadows, spacing } from '@/lib/theme';
 import { t } from '@/lib/strings';
@@ -46,7 +47,7 @@ export default function ServicesScreen() {
       service_duration: svc.duration_mins,
       service_price: Number(svc.price),
     });
-    router.push(`/book/${slug}/staff`);
+    router.push(`/book/${slug}/staff` as never);
   }
 
   return (
@@ -86,7 +87,7 @@ export default function ServicesScreen() {
                       <View style={styles.cardInner}>
                         {/* Price badge */}
                         <View style={styles.priceWrap}>
-                          <Text style={styles.price}>{formatPrice(svc.price)}</Text>
+                          <Text style={styles.price}>{formatPrice(svc.price as string | number)}</Text>
                         </View>
 
                         {/* Service details */}
@@ -106,7 +107,7 @@ export default function ServicesScreen() {
 
                         {/* Arrow */}
                         <View style={styles.arrowWrap}>
-                          <Text style={styles.arrow}>‹</Text>
+                          <Icon name="chevron-back" size={18} color={colors.mutedForeground} />
                         </View>
                       </View>
                     </Card>
@@ -235,11 +236,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingEnd: spacing[3],
-  },
-  arrow: {
-    fontSize: 22,
-    color: colors.mutedForeground,
-    transform: [{ scaleX: -1 }],
   },
 
   skeleton: { marginBottom: spacing[2] },

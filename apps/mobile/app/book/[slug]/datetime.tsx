@@ -57,7 +57,7 @@ export default function DateTimeScreen() {
 
   function handleSlotSelect(slot: { start: string; staff_id: string }) {
     setBooking({ start_datetime: slot.start, staff_id: slot.staff_id });
-    router.push(`/book/${slug}/details`);
+    router.push(`/book/${slug}/details` as never);
   }
 
   return (

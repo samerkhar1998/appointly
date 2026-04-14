@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Icon } from '@/components/ui/Icon';
 import { colors, fontSize, radius, shadows, spacing } from '@/lib/theme';
 import { t } from '@/lib/strings';
 import { formatDate, formatTime } from '@/lib/utils';
@@ -77,11 +78,15 @@ function AppointmentRow({ appt }: { appt: Appointment }) {
           </View>
         </View>
         <Text style={styles.apptService} numberOfLines={1}>{appt.service.name}</Text>
-        <Text style={styles.apptDate}>
-          🗓 {formatDate(appt.start_datetime, tz)} • {formatTime(appt.start_datetime, tz)}
-        </Text>
+        <View style={styles.apptMetaRow}>
+          <Icon name="calendar-outline" size={12} color={colors.mutedForeground} />
+          <Text style={styles.apptDate}>{formatDate(appt.start_datetime, tz)} • {formatTime(appt.start_datetime, tz)}</Text>
+        </View>
         {appt.staff_name ? (
-          <Text style={styles.apptStaff}>👤 {appt.staff_name}</Text>
+          <View style={styles.apptMetaRow}>
+            <Icon name="person-outline" size={12} color={colors.mutedForeground} />
+            <Text style={styles.apptStaff}>{appt.staff_name}</Text>
+          </View>
         ) : null}
       </View>
     </View>
@@ -112,7 +117,9 @@ function PhoneEntry({ onSave }: { onSave: (p: string) => void }) {
 
   return (
     <View style={styles.phoneCard}>
-      <Text style={styles.phoneIcon}>📱</Text>
+      <View style={styles.phoneIcon}>
+        <Icon name="phone-portrait-outline" size={28} color={colors.brand[600]} />
+      </View>
       <Text style={styles.phoneText}>{t('my_appointments_phone_prompt')}</Text>
       <View style={styles.phoneRow}>
         <View style={styles.phoneInput}>
@@ -198,7 +205,9 @@ export default function MyAppointmentsTab() {
           </View>
         ) : upcoming.length === 0 && past.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>📅</Text>
+            <View style={styles.emptyIconWrap}>
+              <Icon name="calendar-outline" size={36} color={colors.brand[400]} />
+            </View>
             <Text style={styles.emptyTitle}>{t('my_appointments_empty')}</Text>
             <Text style={styles.emptySub}>{t('my_appointments_empty_sub')}</Text>
             <Button
@@ -334,6 +343,11 @@ const styles = StyleSheet.create({
     color: colors.mutedForeground,
     textAlign: 'right',
   },
+  apptMetaRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: spacing[1],
+  },
   apptStaff: {
     fontFamily: 'Heebo_400Regular',
     fontSize: fontSize.xs,
@@ -353,7 +367,14 @@ const styles = StyleSheet.create({
     marginTop: spacing[4],
     ...shadows.card,
   },
-  phoneIcon: { fontSize: 36 },
+  phoneIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.xl,
+    backgroundColor: colors.brand[50],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   phoneText: {
     fontFamily: 'Heebo_500Medium',
     fontSize: fontSize.base,
@@ -402,7 +423,16 @@ const styles = StyleSheet.create({
     gap: spacing[4],
     paddingVertical: spacing[10],
   },
-  emptyIcon: { fontSize: 44 },
+  emptyIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.brand[50],
+    borderWidth: 2,
+    borderColor: colors.brand[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   emptyTitle: {
     fontFamily: 'Heebo_700Bold',
     fontSize: fontSize['2xl'],

@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -17,9 +15,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Icon } from '@/components/ui/Icon';
 import { colors, fontSize, radius, shadows, spacing } from '@/lib/theme';
 import { t } from '@/lib/strings';
 import { formatDate, formatTime } from '@/lib/utils';
+import { useFavorites, type SalonItem } from './discover';
 
 const PHONE_KEY = '@appointly/customer_phone';
 
@@ -65,11 +65,15 @@ function AppointmentCard({ appt }: { appt: Appointment }) {
         </View>
         <Text style={styles.apptService} numberOfLines={1}>{appt.service.name}</Text>
         <View style={styles.apptMeta}>
-          <Text style={styles.apptMetaText}>
-            🗓 {formatDate(appt.start_datetime, tz)} • {formatTime(appt.start_datetime, tz)}
-          </Text>
+          <View style={styles.apptMetaRow}>
+            <Icon name="calendar-outline" size={12} color={colors.mutedForeground} />
+            <Text style={styles.apptMetaText}>{formatDate(appt.start_datetime, tz)} • {formatTime(appt.start_datetime, tz)}</Text>
+          </View>
           {appt.staff_name ? (
-            <Text style={styles.apptMetaText}>👤 {appt.staff_name}</Text>
+            <View style={styles.apptMetaRow}>
+              <Icon name="person-outline" size={12} color={colors.mutedForeground} />
+              <Text style={styles.apptMetaText}>{appt.staff_name}</Text>
+            </View>
           ) : null}
         </View>
       </View>
@@ -107,7 +111,9 @@ function PhonePrompt({
 
   return (
     <View style={styles.phonePrompt}>
-      <Text style={styles.phonePromptIcon}>📱</Text>
+      <View style={styles.phonePromptIcon}>
+        <Icon name="phone-portrait-outline" size={28} color={colors.brand[600]} />
+      </View>
       <Text style={styles.phonePromptText}>{t('home_phone_prompt')}</Text>
       <View style={styles.phoneRow}>
         <View style={styles.phoneInput}>
@@ -135,12 +141,32 @@ function PhonePrompt({
   );
 }
 
+// Mini salon card for favorites section
+function FavoriteCard({ salon }: { salon: SalonItem }) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.favCard, pressed && styles.favCardPressed]}
+      onPress={() => router.push(`/salon/${salon.slug}` as never)}
+    >
+      <View style={styles.favLogo}>
+        {salon.logo_url ? (
+          <Image source={{ uri: salon.logo_url }} style={styles.favLogoImg} />
+        ) : (
+          <Text style={styles.favLogoFallback}>{salon.name.charAt(0)}</Text>
+        )}
+      </View>
+      <Text style={styles.favName} numberOfLines={1}>{salon.name}</Text>
+      {salon.city ? <Text style={styles.favCity} numberOfLines={1}>{salon.city}</Text> : null}
+    </Pressable>
+  );
+}
+
 // Empty state when no appointments found
 function EmptyState() {
   return (
     <View style={styles.empty}>
       <View style={styles.emptyIllustration}>
-        <Text style={styles.emptyEmoji}>✂️</Text>
+        <Icon name="cut-outline" size={36} color={colors.brand[400]} />
       </View>
       <Text style={styles.emptyTitle}>{t('home_no_appointments_title')}</Text>
       <Text style={styles.emptySubtitle}>{t('home_no_appointments_sub')}</Text>
@@ -159,6 +185,7 @@ export default function HomeTab() {
   const insets = useSafeAreaInsets();
   const [phone, setPhone] = useState<string | null>(null);
   const [phoneLoaded, setPhoneLoaded] = useState(false);
+  const { favorites } = useFavorites();
 
   // Load saved phone from AsyncStorage on mount
   useEffect(() => {
@@ -206,7 +233,7 @@ export default function HomeTab() {
         {/* Brand header */}
         <View style={styles.brand}>
           <View style={styles.brandIcon}>
-            <Text style={styles.brandIconText}>✂</Text>
+            <Icon name="cut" size={28} color={colors.white} />
           </View>
           <Text style={styles.brandName}>{t('app_name')}</Text>
         </View>
@@ -240,17 +267,33 @@ export default function HomeTab() {
               </View>
             )}
 
+            {/* Favorites section */}
+            {favorites.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>{t('home_favorites_title')}</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.favRow}
+                >
+                  {favorites.map((salon) => (
+                    <FavoriteCard key={salon.id} salon={salon} />
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
             {/* Discover CTA always present at bottom */}
             <Pressable
               style={({ pressed }) => [styles.discoverCta, pressed && styles.discoverCtaPressed]}
               onPress={() => router.push('/(tabs)/discover' as never)}
             >
-              <Text style={styles.discoverEmoji}>🔍</Text>
+              <Icon name="search" size={26} color={colors.white} />
               <View style={styles.discoverText}>
                 <Text style={styles.discoverTitle}>{t('home_discover_cta')}</Text>
                 <Text style={styles.discoverSub}>{t('discover_subtitle')}</Text>
               </View>
-              <Text style={styles.discoverArrow}>←</Text>
+              <Icon name="chevron-back" size={20} color={colors.brand[200]} />
             </Pressable>
           </View>
         )}
@@ -280,7 +323,6 @@ const styles = StyleSheet.create({
     ...shadows.elevated,
     shadowColor: colors.brand[600],
   },
-  brandIconText: { fontSize: 28, color: colors.white },
   brandName: {
     fontFamily: 'Heebo_700Bold',
     fontSize: fontSize['3xl'],
@@ -394,7 +436,12 @@ const styles = StyleSheet.create({
     color: colors.muted,
     textAlign: 'right',
   },
-  apptMeta: { gap: 2 },
+  apptMeta: { gap: spacing[1] },
+  apptMetaRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: spacing[1],
+  },
   apptMetaText: {
     fontFamily: 'Heebo_400Regular',
     fontSize: fontSize.xs,
@@ -413,7 +460,14 @@ const styles = StyleSheet.create({
     gap: spacing[4],
     ...shadows.card,
   },
-  phonePromptIcon: { fontSize: 36 },
+  phonePromptIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.xl,
+    backgroundColor: colors.brand[50],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   phonePromptText: {
     fontFamily: 'Heebo_500Medium',
     fontSize: fontSize.base,
@@ -446,7 +500,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyEmoji: { fontSize: 36 },
   emptyTitle: {
     fontFamily: 'Heebo_700Bold',
     fontSize: fontSize['2xl'],
@@ -463,6 +516,49 @@ const styles = StyleSheet.create({
   },
   emptyBtn: { width: '100%' },
 
+  // Favorites
+  favRow: {
+    gap: spacing[3],
+    paddingVertical: spacing[1],
+  },
+  favCard: {
+    alignItems: 'center',
+    gap: spacing[2],
+    width: 80,
+  },
+  favCardPressed: { opacity: 0.8 },
+  favLogo: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.xl,
+    backgroundColor: colors.brand[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: colors.brand[200],
+    ...shadows.card,
+  },
+  favLogoImg: { width: 64, height: 64 },
+  favLogoFallback: {
+    fontFamily: 'Heebo_700Bold',
+    fontSize: fontSize['2xl'],
+    color: colors.brand[600],
+  },
+  favName: {
+    fontFamily: 'Heebo_500Medium',
+    fontSize: fontSize.xs,
+    color: colors.foreground,
+    textAlign: 'center',
+    lineHeight: 15,
+  },
+  favCity: {
+    fontFamily: 'Heebo_400Regular',
+    fontSize: 10,
+    color: colors.muted,
+    textAlign: 'center',
+  },
+
   // Discover CTA card
   discoverCta: {
     flexDirection: 'row',
@@ -475,7 +571,6 @@ const styles = StyleSheet.create({
     shadowColor: colors.brand[600],
   },
   discoverCtaPressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
-  discoverEmoji: { fontSize: 28 },
   discoverText: { flex: 1, gap: spacing[0.5] },
   discoverTitle: {
     fontFamily: 'Heebo_700Bold',

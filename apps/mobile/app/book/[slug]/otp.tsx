@@ -24,7 +24,7 @@ export default function OtpScreen() {
   const verifyOtp = trpc.verification.verifyOTP.useMutation({
     onSuccess: (data) => {
       setBooking({ verification_token: data.verification_token });
-      router.push(`/book/${slug}/confirmation`);
+      router.push(`/book/${slug}/confirmation` as never);
     },
     onError: (err) => {
       setError(err.message);

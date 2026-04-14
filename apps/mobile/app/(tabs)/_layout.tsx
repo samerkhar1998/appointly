@@ -1,22 +1,45 @@
 import { Tabs } from 'expo-router';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Icon } from '@/components/ui/Icon';
+import type { IconName } from '@/components/ui/Icon';
 import { colors, fontSize, spacing } from '@/lib/theme';
-import { t } from '@/lib/strings';
 
-// Tab bar icon — rendered as a simple emoji badge
+type TabConfig = {
+  name: string;
+  label: string;
+  iconActive: IconName;
+  iconInactive: IconName;
+};
+
+// Reversed so React Navigation v6 renders them right-to-left visually.
+// RN v6 hardcodes flexDirection:'row' in the items container and ignores I18nManager,
+// so reversing the array is the only reliable way to get RTL order in the tab bar.
+const TABS: TabConfig[] = [
+  { name: 'profile',         label: 'פרופיל',  iconActive: 'person',            iconInactive: 'person-outline' },
+  { name: 'my-appointments', label: 'תורים',   iconActive: 'calendar',          iconInactive: 'calendar-outline' },
+  { name: 'discover',        label: 'גלה',     iconActive: 'search',            iconInactive: 'search-outline' },
+  { name: 'index',           label: 'בית',     iconActive: 'home',              iconInactive: 'home-outline' },
+];
+
 function TabIcon({
-  emoji,
+  iconActive,
+  iconInactive,
   label,
   focused,
 }: {
-  emoji: string;
+  iconActive: IconName;
+  iconInactive: IconName;
   label: string;
   focused: boolean;
 }) {
   return (
     <View style={[styles.iconWrap, focused && styles.iconWrapActive]}>
-      <Text style={styles.emoji}>{emoji}</Text>
+      <Icon
+        name={focused ? iconActive : iconInactive}
+        size={22}
+        color={focused ? colors.brand[600] : colors.muted}
+      />
       <Text style={[styles.label, focused && styles.labelActive]}>{label}</Text>
     </View>
   );
@@ -38,30 +61,22 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.muted,
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="🏠" label={t('tab_home')} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="discover"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="🔍" label={t('tab_discover')} focused={focused} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="my-appointments"
-        options={{
-          tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="📅" label={t('tab_my_appointments')} focused={focused} />
-          ),
-        }}
-      />
+      {TABS.map((tab) => (
+        <Tabs.Screen
+          key={tab.name}
+          name={tab.name}
+          options={{
+            tabBarIcon: ({ focused }) => (
+              <TabIcon
+                iconActive={tab.iconActive}
+                iconInactive={tab.iconInactive}
+                label={tab.label}
+                focused={focused}
+              />
+            ),
+          }}
+        />
+      ))}
     </Tabs>
   );
 }
@@ -81,15 +96,15 @@ const styles = StyleSheet.create({
   },
   iconWrap: {
     alignItems: 'center',
-    gap: 2,
-    paddingHorizontal: spacing[3],
+    gap: 3,
+    paddingHorizontal: spacing[4],
     paddingVertical: spacing[1],
     borderRadius: 12,
+    minWidth: 56,
   },
   iconWrapActive: {
     backgroundColor: colors.brand[50],
   },
-  emoji: { fontSize: 20 },
   label: {
     fontFamily: 'Heebo_500Medium',
     fontSize: fontSize.xs,

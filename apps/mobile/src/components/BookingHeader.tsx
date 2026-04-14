@@ -1,6 +1,7 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Icon } from '@/components/ui/Icon';
 import { colors, fontSize, radius, shadows, spacing } from '@/lib/theme';
 import { t } from '@/lib/strings';
 
@@ -33,7 +34,7 @@ export function BookingHeader({ salonName, logoUrl, showBack = true }: Props) {
         accessibilityLabel={t('back')}
         hitSlop={12}
       >
-        <Text style={styles.backArrow}>→</Text>
+        <Icon name="chevron-back" size={20} color={colors.brand[600]} />
         <Text style={styles.backLabel}>{t('back')}</Text>
       </Pressable>
 
@@ -78,11 +79,6 @@ const styles = StyleSheet.create({
   backBtnPressed: { opacity: 0.5 },
   invisible: { opacity: 0 },
 
-  backArrow: {
-    fontSize: fontSize.lg,
-    color: colors.brand[600],
-    lineHeight: fontSize.lg + 2,
-  },
   backLabel: {
     fontFamily: 'Heebo_500Medium',
     fontSize: fontSize.sm,
