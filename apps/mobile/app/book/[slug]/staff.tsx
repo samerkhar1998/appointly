@@ -27,13 +27,13 @@ export default function StaffScreen() {
   useEffect(() => {
     if (data && data.length === 1 && data[0]) {
       setBooking({ staff_id: data[0].id, staff_name: data[0].display_name });
-      router.replace(`/book/${slug}/datetime`);
+      router.replace(`/book/${slug}/datetime` as never);
     }
   }, [data, slug, setBooking]);
 
   function handleSelect(staffId: string | null, staffName: string | null) {
     setBooking({ staff_id: staffId, staff_name: staffName });
-    router.push(`/book/${slug}/datetime`);
+    router.push(`/book/${slug}/datetime` as never);
   }
 
   return (

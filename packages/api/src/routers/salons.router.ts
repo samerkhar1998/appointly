@@ -15,6 +15,27 @@ import {
 } from '@appointly/shared';
 
 export const salonsRouter = createTRPCRouter({
+  // Returns the salon owned by the authenticated user. Used by the mobile
+  // owner dashboard screens which don't have salon_id in the client state.
+  getMySalon: salonOwnerProcedure.query(async ({ ctx }) => {
+    if (!ctx.user?.salon_id) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'No salon found for this account' });
+    }
+    return ctx.db.salon.findUniqueOrThrow({
+      where: { id: ctx.user.salon_id },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        city: true,
+        logo_url: true,
+        cover_url: true,
+        timezone: true,
+        is_public: true,
+      },
+    });
+  }),
+
   create: salonOwnerProcedure.input(createSalonSchema).mutation(async ({ input, ctx }) => {
     const existing = await ctx.db.salon.findUnique({ where: { slug: input.slug } });
     if (existing) {

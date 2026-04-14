@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { I18nManager } from 'react-native';
-import { Stack } from 'expo-router';
+import { I18nManager, View } from 'react-native';
+import { Redirect, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -12,10 +12,40 @@ import {
   Heebo_700Bold,
 } from '@expo-google-fonts/heebo';
 import { trpc, createTrpcClient } from '@/lib/trpc';
+import { useAuthStore } from '@/store/auth';
+import { colors } from '@/lib/theme';
 
-// Force RTL for Hebrew — must be set before any UI renders
-I18nManager.allowRTL(true);
-I18nManager.forceRTL(true);
+// ─── RTL — runs before any UI renders ─────────────────────────────────────────
+// This app targets the Israeli market and is always RTL regardless of device
+// locale. forceRTL updates I18nManager.isRTL synchronously on the JS side so
+// React Navigation reads the correct value before rendering the tab bar.
+if (!I18nManager.isRTL) {
+  I18nManager.allowRTL(true);
+  I18nManager.forceRTL(true);
+}
+
+// ─── Root redirect ─────────────────────────────────────────────────────────────
+function RootRedirect() {
+  const { hasOnboarded, isLoading, user } = useAuthStore();
+
+  if (isLoading) {
+    return <View style={{ flex: 1, backgroundColor: colors.white }} />;
+  }
+
+  // First-ever launch — show the 3-slide onboarding carousel.
+  if (!hasOnboarded) {
+    return <Redirect href="/onboarding" />;
+  }
+
+  // Onboarding seen but no auth decision made yet (or after logout) — show
+  // the Customer / Owner / Guest selection screen.
+  if (!user) {
+    return <Redirect href="/auth" />;
+  }
+
+  // Authenticated (customer, owner, or explicit guest) — go straight to tabs.
+  return <Redirect href="/(tabs)" />;
+}
 
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient({
@@ -24,6 +54,7 @@ export default function RootLayout() {
     },
   }));
   const [trpcClient] = useState(() => createTrpcClient());
+  const hydrate = useAuthStore((s) => s.hydrate);
 
   const [fontsLoaded] = useFonts({
     Heebo_400Regular,
@@ -32,6 +63,10 @@ export default function RootLayout() {
     Heebo_700Bold,
   });
 
+  useEffect(() => {
+    void hydrate();
+  }, [hydrate]);
+
   if (!fontsLoaded) return null;
 
   return (
@@ -39,10 +74,18 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
           <StatusBar style="dark" />
+          <RootRedirect />
           <Stack screenOptions={{ headerShown: false }}>
-            {/* Tab group — the main shell */}
+            <Stack.Screen
+              name="onboarding"
+              options={{ animation: 'fade', gestureEnabled: false }}
+            />
+            <Stack.Screen name="auth" options={{ animation: 'slide_from_bottom' }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            {/* Stack screens pushed on top of tabs */}
+            <Stack.Screen name="owner/calendar" options={{ animation: 'slide_from_left' }} />
+            <Stack.Screen name="owner/clients" options={{ animation: 'slide_from_left' }} />
+            <Stack.Screen name="owner/services" options={{ animation: 'slide_from_left' }} />
+            <Stack.Screen name="owner/analytics" options={{ animation: 'slide_from_left' }} />
             <Stack.Screen name="salon/[slug]" options={{ animation: 'slide_from_left' }} />
             <Stack.Screen name="invite/[token]" />
             <Stack.Screen name="book/[slug]" />

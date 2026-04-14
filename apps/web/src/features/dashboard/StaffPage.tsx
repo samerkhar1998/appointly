@@ -120,9 +120,9 @@ function ScheduleDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>שעות עבודה — {staffName}</DialogTitle>
+          <DialogTitle className="text-base">שעות עבודה — {staffName}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-2 max-h-[60vh] overflow-y-auto pe-1">
@@ -416,7 +416,7 @@ function DaysOffDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md">
         <DialogHeader>
           <DialogTitle>ימי חופשה — {staffName}</DialogTitle>
         </DialogHeader>
@@ -813,7 +813,7 @@ export function StaffPage() {
 
       {/* Add staff dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>הוספת עובד חדש</DialogTitle>
           </DialogHeader>
@@ -920,7 +920,7 @@ export function StaffPage() {
 
       {/* Confirm deactivate dialog */}
       <Dialog open={!!deactivateId} onOpenChange={() => setDeactivateId(null)}>
-        <DialogContent>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>הסרת עובד</DialogTitle>
           </DialogHeader>

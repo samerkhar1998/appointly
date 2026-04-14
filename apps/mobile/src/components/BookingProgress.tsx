@@ -17,40 +17,48 @@ interface Props {
 
 export function BookingProgress({ currentStep }: Props) {
   const totalSteps = STEPS.length;
-  const progress = (currentStep + 1) / totalSteps;
+  // Progress expressed as a percentage of the bar width
+  const progressPct = ((currentStep + 1) / totalSteps) * 100;
 
   const currentLabel = STEPS[currentStep] ?? '';
   const nextLabel = currentStep < totalSteps - 1 ? STEPS[currentStep + 1] : null;
 
   return (
     <View style={styles.container}>
-      {/* Step info row */}
+      {/* Step info row — right-aligned labels, counter on left */}
       <View style={styles.infoRow}>
+        {/* Step counter on the left (end in RTL) */}
         <Text style={styles.stepCounter}>
           {currentStep + 1} / {totalSteps}
         </Text>
+
+        {/* Current & next step labels, right-aligned */}
         <View style={styles.stepNames}>
           <Text style={styles.currentStep}>{currentLabel}</Text>
           {nextLabel ? (
-            <Text style={styles.nextStep}> ← {nextLabel}</Text>
+            <Text style={styles.nextStep}>{nextLabel} ←</Text>
           ) : null}
         </View>
       </View>
 
-      {/* Progress bar track */}
+      {/* Progress bar — fills from RIGHT to LEFT for RTL */}
       <View style={styles.track}>
-        <View style={[styles.fill, { width: `${progress * 100}%` }]} />
-        {/* Step markers */}
+        {/* Fill anchored to the right edge, grows leftward */}
+        <View style={[styles.fill, { width: `${progressPct}%` as unknown as number }]} />
+
+        {/* Step markers — positioned from the right edge */}
         {STEPS.map((_, i) => {
           const isDone = i < currentStep;
           const isActive = i === currentStep;
-          const pos = ((i + 1) / totalSteps) * 100;
+          // Distance from the RIGHT edge: step 0 is 80% from right (= 20% from left in 5-step)
+          // Each step marker sits at its own "fill boundary" from the right
+          const posFromRight = ((totalSteps - (i + 1)) / totalSteps) * 100;
           return (
             <View
               key={i}
               style={[
                 styles.marker,
-                { left: `${pos}%` as unknown as number },
+                { right: `${posFromRight}%` as unknown as number },
                 isDone && styles.markerDone,
                 isActive && styles.markerActive,
               ]}
@@ -84,8 +92,9 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
   stepNames: {
-    flexDirection: 'row',
+    flexDirection: 'row-reverse',
     alignItems: 'center',
+    gap: spacing[1],
   },
   currentStep: {
     fontFamily: 'Heebo_700Bold',
@@ -99,18 +108,25 @@ const styles = StyleSheet.create({
     color: colors.mutedForeground,
   },
 
+  // Track: relative container; fill + markers use absolute positioning
   track: {
     height: 6,
     backgroundColor: colors.border,
     borderRadius: radius.full,
-    overflow: 'visible',
     position: 'relative',
   },
+
+  // Fill: anchored to the right edge, grows leftward as progress increases
   fill: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
     height: 6,
     backgroundColor: colors.brand[600],
     borderRadius: radius.full,
   },
+
+  // Markers: positioned from the right edge; centered with marginRight: -6
   marker: {
     position: 'absolute',
     top: -3,
@@ -118,7 +134,7 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     backgroundColor: colors.border,
-    marginLeft: -6,
+    marginRight: -6,
     borderWidth: 2,
     borderColor: colors.white,
   },
@@ -132,7 +148,7 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     top: -4,
-    marginLeft: -7,
+    marginRight: -7,
     shadowColor: colors.brand[600],
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.4,

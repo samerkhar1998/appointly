@@ -16,6 +16,7 @@ export interface AuthUser {
 export interface ApiRequest {
   headers: {
     cookie?: string | undefined;
+    authorization?: string | undefined;
   };
 }
 
@@ -32,8 +33,15 @@ export interface Context {
 
 async function getUserFromRequest(req: ApiRequest): Promise<AuthUser | null> {
   try {
-    const cookies = parseCookies(req.headers.cookie ?? '');
-    const token = cookies['appointly_token'];
+    // Support both cookie-based auth (web) and Bearer token auth (mobile).
+    let token: string | undefined;
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.slice(7);
+    } else {
+      const cookies = parseCookies(req.headers.cookie ?? '');
+      token = cookies['appointly_token'];
+    }
     if (!token) return null;
 
     const { payload } = await jose.jwtVerify(token, JWT_SECRET);
