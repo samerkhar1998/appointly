@@ -143,6 +143,51 @@ export const he = {
   home_discover_cta: 'גלה עסקים',
   home_my_salons_cta: 'העסקים שלי',
   home_direct_label: 'כניסה ישירה לעסק',
+
+  // Home tab (appointments-aware)
+  home_upcoming_title: 'תורים קרובים',
+  home_no_appointments_title: 'עדיין אין תורים',
+  home_no_appointments_sub: 'גלה עסקים וקבע את התור הראשון שלך',
+  home_go_discover: 'גלה עסקים',
+  home_phone_prompt: 'הכנס מספר טלפון כדי לראות את התורים שלך',
+  home_save_phone: 'שמור',
+
+  // My Appointments tab
+  my_appointments_title: 'התורים שלי',
+  my_appointments_upcoming: 'תורים קרובים',
+  my_appointments_past: 'תורים קודמים',
+  my_appointments_empty: 'לא נמצאו תורים',
+  my_appointments_empty_sub: 'עדיין לא קבעת תורים עם מספר זה',
+  my_appointments_phone_prompt: 'הכנס מספר טלפון לצפייה בתורים שלך',
+
+  // Tab bar labels
+  tab_home: 'בית',
+  tab_discover: 'גלה עסקים',
+  tab_my_appointments: 'התורים שלי',
+
+  // Salon Profile screen
+  salon_profile_book_cta: 'קבע תור',
+  salon_profile_services_title: 'שירותים',
+  salon_profile_staff_title: 'הצוות שלנו',
+  salon_profile_hours_title: 'שעות פעילות',
+  salon_profile_no_services: 'אין שירותים זמינים',
+  salon_profile_no_staff: 'אין מידע על הצוות',
+  salon_profile_closed: 'סגור',
+
+  // Day names (Hebrew short)
+  day_sun: 'ראשון',
+  day_mon: 'שני',
+  day_tue: 'שלישי',
+  day_wed: 'רביעי',
+  day_thu: 'חמישי',
+  day_fri: 'שישי',
+  day_sat: 'שבת',
+
+  // Appointment status labels
+  status_pending: 'ממתין לאישור',
+  status_confirmed: 'מאושר',
+  status_completed: 'הושלם',
+  status_no_show: 'לא הגיע',
 } as const;
 
 export type StringKey = keyof typeof he;
