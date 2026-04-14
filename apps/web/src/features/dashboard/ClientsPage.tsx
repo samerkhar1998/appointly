@@ -133,124 +133,202 @@ export function ClientsPage() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="rounded-2xl border border-border/50 bg-white shadow-card overflow-hidden">
-          {isLoading ? (
-            <div className="space-y-0">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex gap-4 px-4 py-3.5 border-b border-border/50 last:border-0">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-4 w-28" />
-                  <Skeleton className="h-4 w-36" />
-                  <Skeleton className="h-4 w-16" />
+        {/* Loading skeletons */}
+        {isLoading && (
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 w-full rounded-2xl" />
+            ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!isLoading && !data?.items.length && (
+          <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-2xl border border-border/50 shadow-card">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-surface mb-3">
+              <Users className="h-5 w-5 text-muted" />
+            </div>
+            <p className="font-medium text-foreground">
+              {debouncedSearch ? 'לא נמצאו תוצאות' : 'אין לקוחות עדיין'}
+            </p>
+            <p className="text-sm text-muted mt-1">
+              {debouncedSearch ? 'נסה חיפוש אחר' : 'לקוחות יופיעו כאן לאחר ביצוע הזמנה ראשונה'}
+            </p>
+          </div>
+        )}
+
+        {!isLoading && !!data?.items.length && (
+          <>
+            {/* ── Mobile card list ── */}
+            <div className="lg:hidden space-y-3">
+              {data.items.map((client) => (
+                <div
+                  key={client.id}
+                  className="bg-white rounded-2xl border border-border/50 shadow-sm p-4 space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-foreground">{client.name}</p>
+                      {client.notes && (
+                        <p className="text-xs text-muted mt-0.5 line-clamp-2">{client.notes}</p>
+                      )}
+                    </div>
+                    <Badge variant={client.is_blocked ? 'destructive' : 'success'} className="shrink-0">
+                      {client.is_blocked ? 'חסום' : 'פעיל'}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 text-sm text-muted" dir="ltr">
+                      <Phone className="h-3.5 w-3.5 shrink-0" />
+                      {client.phone}
+                    </div>
+                    {client.email && (
+                      <div className="flex items-center gap-2 text-sm text-muted" dir="ltr">
+                        <Mail className="h-3.5 w-3.5 shrink-0" />
+                        {client.email}
+                      </div>
+                    )}
+                    {client.last_visit_at && (
+                      <div className="flex items-center gap-2 text-sm text-muted">
+                        <CalendarCheck className="h-3.5 w-3.5 shrink-0" />
+                        {formatDate(client.last_visit_at)}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-1 pt-1 border-t border-border/50">
+                    <button
+                      onClick={() => openNoteDialog(client)}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-muted hover:text-foreground hover:bg-surface transition-colors min-h-[44px]"
+                    >
+                      <StickyNote className="h-4 w-4" />
+                      הערה
+                    </button>
+                    {client.is_blocked ? (
+                      <button
+                        onClick={() => unblockMutation.mutate({ client_id: client.id })}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-emerald-600 hover:bg-emerald-50 transition-colors min-h-[44px]"
+                      >
+                        <ShieldCheck className="h-4 w-4" />
+                        בטל חסימה
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => blockMutation.mutate({ client_id: client.id })}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-red-500 hover:bg-red-50 transition-colors min-h-[44px]"
+                      >
+                        <Ban className="h-4 w-4" />
+                        חסום
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setRemoveConfirm({ id: client.id, name: client.name })}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-medium text-red-500 hover:bg-red-50 transition-colors min-h-[44px]"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      הסר
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
-          ) : !data?.items.length ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-surface mb-3">
-                <Users className="h-5 w-5 text-muted" />
-              </div>
-              <p className="font-medium text-foreground">
-                {debouncedSearch ? 'לא נמצאו תוצאות' : 'אין לקוחות עדיין'}
-              </p>
-              <p className="text-sm text-muted mt-1">
-                {debouncedSearch ? 'נסה חיפוש אחר' : 'לקוחות יופיעו כאן לאחר ביצוע הזמנה ראשונה'}
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>שם</TableHead>
-                  <TableHead>טלפון</TableHead>
-                  <TableHead>אימייל</TableHead>
-                  <TableHead>ביקור אחרון</TableHead>
-                  <TableHead>סטטוס</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.items.map((client) => (
-                  <TableRow key={client.id}>
-                    <TableCell>
-                      <p className="font-medium text-foreground">{client.name}</p>
-                      {client.notes && (
-                        <p className="text-xs text-muted mt-0.5 line-clamp-1">{client.notes}</p>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-1.5 text-sm text-foreground" dir="ltr">
-                        <Phone className="h-3.5 w-3.5 text-muted shrink-0" />
-                        {client.phone}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {client.email ? (
-                        <span className="inline-flex items-center gap-1.5 text-sm text-muted" dir="ltr">
-                          <Mail className="h-3.5 w-3.5 shrink-0" />
-                          {client.email}
-                        </span>
-                      ) : (
-                        <span className="text-muted text-xs">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {client.last_visit_at ? (
-                        <span className="inline-flex items-center gap-1.5 text-sm text-muted">
-                          <CalendarCheck className="h-3.5 w-3.5" />
-                          {formatDate(client.last_visit_at)}
-                        </span>
-                      ) : (
-                        <span className="text-muted text-xs">טרם ביקר</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={client.is_blocked ? 'destructive' : 'success'}>
-                        {client.is_blocked ? 'חסום' : 'פעיל'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => openNoteDialog(client)}
-                          className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-surface transition-colors"
-                          title="הוסף הערה"
-                        >
-                          <StickyNote className="h-4 w-4" />
-                        </button>
-                        {client.is_blocked ? (
-                          <button
-                            onClick={() => unblockMutation.mutate({ client_id: client.id })}
-                            className="p-2 rounded-lg text-muted hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-                            title="הסר חסימה"
-                          >
-                            <ShieldCheck className="h-4 w-4" />
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => blockMutation.mutate({ client_id: client.id })}
-                            className="p-2 rounded-lg text-muted hover:text-red-500 hover:bg-red-50 transition-colors"
-                            title="חסום לקוח"
-                          >
-                            <Ban className="h-4 w-4" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setRemoveConfirm({ id: client.id, name: client.name })}
-                          className="p-2 rounded-lg text-muted hover:text-red-500 hover:bg-red-50 transition-colors"
-                          title="הסר לקוח"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </TableCell>
+
+            {/* ── Desktop table ── */}
+            <div className="hidden lg:block rounded-2xl border border-border/50 bg-white shadow-card overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>שם</TableHead>
+                    <TableHead>טלפון</TableHead>
+                    <TableHead>אימייל</TableHead>
+                    <TableHead>ביקור אחרון</TableHead>
+                    <TableHead>סטטוס</TableHead>
+                    <TableHead />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </div>
+                </TableHeader>
+                <TableBody>
+                  {data.items.map((client) => (
+                    <TableRow key={client.id}>
+                      <TableCell>
+                        <p className="font-medium text-foreground">{client.name}</p>
+                        {client.notes && (
+                          <p className="text-xs text-muted mt-0.5 line-clamp-1">{client.notes}</p>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center gap-1.5 text-sm text-foreground" dir="ltr">
+                          <Phone className="h-3.5 w-3.5 text-muted shrink-0" />
+                          {client.phone}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {client.email ? (
+                          <span className="inline-flex items-center gap-1.5 text-sm text-muted" dir="ltr">
+                            <Mail className="h-3.5 w-3.5 shrink-0" />
+                            {client.email}
+                          </span>
+                        ) : (
+                          <span className="text-muted text-xs">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {client.last_visit_at ? (
+                          <span className="inline-flex items-center gap-1.5 text-sm text-muted">
+                            <CalendarCheck className="h-3.5 w-3.5" />
+                            {formatDate(client.last_visit_at)}
+                          </span>
+                        ) : (
+                          <span className="text-muted text-xs">טרם ביקר</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={client.is_blocked ? 'destructive' : 'success'}>
+                          {client.is_blocked ? 'חסום' : 'פעיל'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => openNoteDialog(client)}
+                            className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-surface transition-colors"
+                            title="הוסף הערה"
+                          >
+                            <StickyNote className="h-4 w-4" />
+                          </button>
+                          {client.is_blocked ? (
+                            <button
+                              onClick={() => unblockMutation.mutate({ client_id: client.id })}
+                              className="p-2 rounded-lg text-muted hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                              title="הסר חסימה"
+                            >
+                              <ShieldCheck className="h-4 w-4" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => blockMutation.mutate({ client_id: client.id })}
+                              className="p-2 rounded-lg text-muted hover:text-red-500 hover:bg-red-50 transition-colors"
+                              title="חסום לקוח"
+                            >
+                              <Ban className="h-4 w-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setRemoveConfirm({ id: client.id, name: client.name })}
+                            className="p-2 rounded-lg text-muted hover:text-red-500 hover:bg-red-50 transition-colors"
+                            title="הסר לקוח"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )}
 
         {/* Pagination */}
         {totalPages > 1 && (
@@ -286,7 +364,7 @@ export function ClientsPage() {
 
       {/* Remove confirmation dialog */}
       <Dialog open={!!removeConfirm} onOpenChange={() => setRemoveConfirm(null)}>
-        <DialogContent>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>הסרת לקוח</DialogTitle>
           </DialogHeader>
@@ -318,7 +396,7 @@ export function ClientsPage() {
 
       {/* Note dialog */}
       <Dialog open={!!noteDialog} onOpenChange={() => setNoteDialog(null)}>
-        <DialogContent>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>הערה על {noteDialog?.name}</DialogTitle>
           </DialogHeader>

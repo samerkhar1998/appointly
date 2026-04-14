@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Tag, Clock, CircleDollarSign } from 'lucide-react';
+import { Plus, Pencil, Tag, Clock, CircleDollarSign, Trash2 } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { useSalon } from '@/lib/use-salon';
 import { Button } from '@/components/ui/button';
@@ -50,6 +50,7 @@ export function ServicesPage() {
   const { salon, isLoading: salonLoading } = useSalon();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<ServiceRow | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const utils = trpc.useUtils();
 
   const { data: services, isLoading } = trpc.services.list.useQuery(
@@ -79,6 +80,18 @@ export function ServicesPage() {
   const toggleMutation = trpc.services.toggle.useMutation({
     onSuccess: () => utils.services.list.invalidate(),
     onError: (err) => toast({ title: 'שגיאה', description: err.message, variant: 'destructive' }),
+  });
+
+  const deleteMutation = trpc.services.delete.useMutation({
+    onSuccess: () => {
+      utils.services.list.invalidate();
+      setDeleteConfirm(null);
+      toast({ title: 'השירות נמחק' });
+    },
+    onError: (err) => {
+      setDeleteConfirm(null);
+      toast({ title: 'לא ניתן למחוק', description: err.message, variant: 'destructive' });
+    },
   });
 
   const form = useForm<ServiceFormValues>({
@@ -151,86 +164,171 @@ export function ServicesPage() {
           </Button>
         </div>
 
-        {/* Table */}
-        <div className="rounded-2xl border border-border/50 bg-white shadow-card overflow-hidden">
-          {!services?.length ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-surface mb-3">
-                <Tag className="h-5 w-5 text-muted" />
-              </div>
-              <p className="font-medium text-foreground">אין שירותים עדיין</p>
-              <p className="text-sm text-muted mt-1">הוסף שירות ראשון כדי להתחיל</p>
+        {/* Empty state */}
+        {!services?.length && (
+          <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-2xl border border-border/50 shadow-card">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-surface mb-3">
+              <Tag className="h-5 w-5 text-muted" />
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>שם השירות</TableHead>
-                  <TableHead>קטגוריה</TableHead>
-                  <TableHead>משך</TableHead>
-                  <TableHead>מחיר</TableHead>
-                  <TableHead>סטטוס</TableHead>
-                  <TableHead />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {services.map((service) => (
-                  <TableRow key={service.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-foreground">{service.name}</p>
-                        {service.description && (
-                          <p className="text-xs text-muted mt-0.5 line-clamp-1">{service.description}</p>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {service.category ? (
-                        <Badge variant="secondary">{service.category.name}</Badge>
-                      ) : (
-                        <span className="text-muted text-xs">—</span>
+            <p className="font-medium text-foreground">אין שירותים עדיין</p>
+            <p className="text-sm text-muted mt-1">הוסף שירות ראשון כדי להתחיל</p>
+          </div>
+        )}
+
+        {!!services?.length && (
+          <>
+            {/* ── Mobile card list ── */}
+            <div className="lg:hidden space-y-3">
+              {services.map((service) => (
+                <div
+                  key={service.id}
+                  className="bg-white rounded-2xl border border-border/50 shadow-sm p-4 space-y-3"
+                >
+                  {/* Name + status badge */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-foreground">{service.name}</p>
+                      {service.description && (
+                        <p className="text-xs text-muted mt-0.5 line-clamp-2">{service.description}</p>
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-1 text-sm text-foreground">
-                        <Clock className="h-3.5 w-3.5 text-muted" />
-                        {service.duration_mins} דק׳
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-1 text-sm font-medium text-foreground">
-                        <CircleDollarSign className="h-3.5 w-3.5 text-muted" />
-                        {formatPrice(parseFloat(service.price))}
-                      </span>
-                    </TableCell>
-                    <TableCell>
+                    </div>
+                    <Badge variant={service.is_active ? 'success' : 'secondary'} className="shrink-0">
+                      {service.is_active ? 'פעיל' : 'לא פעיל'}
+                    </Badge>
+                  </div>
+
+                  {/* Details row */}
+                  <div className="flex flex-wrap items-center gap-3 text-sm">
+                    {service.category && (
+                      <Badge variant="secondary">{service.category.name}</Badge>
+                    )}
+                    <span className="inline-flex items-center gap-1 text-muted">
+                      <Clock className="h-3.5 w-3.5" />
+                      {service.duration_mins} דק׳
+                    </span>
+                    <span className="inline-flex items-center gap-1 font-semibold text-foreground">
+                      <CircleDollarSign className="h-3.5 w-3.5 text-muted" />
+                      {formatPrice(parseFloat(service.price))}
+                    </span>
+                  </div>
+
+                  {/* Actions: toggle + edit + delete */}
+                  <div className="flex items-center gap-2 pt-1 border-t border-border/50">
+                    <div className="flex items-center gap-2 flex-1">
                       <Switch
                         checked={service.is_active}
                         onCheckedChange={(checked) =>
                           toggleMutation.mutate({ service_id: service.id, is_active: checked })
                         }
                       />
-                    </TableCell>
-                    <TableCell>
-                      <button
-                        onClick={() => openEdit(service as ServiceRow)}
-                        className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-surface transition-colors"
-                        aria-label="ערוך"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                    </TableCell>
+                      <span className="text-xs text-muted">
+                        {service.is_active ? 'פעיל' : 'לא פעיל'}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => openEdit(service as ServiceRow)}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl
+                                 border border-border text-sm font-medium text-muted
+                                 hover:text-foreground hover:bg-surface transition-colors min-h-[44px]"
+                    >
+                      <Pencil className="h-4 w-4" />
+                      ערוך
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirm({ id: service.id, name: service.name })}
+                      className="flex items-center justify-center p-2 rounded-xl border border-border
+                                 text-muted hover:text-red-500 hover:bg-red-50 hover:border-red-200
+                                 transition-colors min-h-[44px] min-w-[44px]"
+                      aria-label="מחק שירות"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── Desktop table ── */}
+            <div className="hidden lg:block rounded-2xl border border-border/50 bg-white shadow-card overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>שם השירות</TableHead>
+                    <TableHead>קטגוריה</TableHead>
+                    <TableHead>משך</TableHead>
+                    <TableHead>מחיר</TableHead>
+                    <TableHead>סטטוס</TableHead>
+                    <TableHead />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </div>
+                </TableHeader>
+                <TableBody>
+                  {services.map((service) => (
+                    <TableRow key={service.id}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-foreground">{service.name}</p>
+                          {service.description && (
+                            <p className="text-xs text-muted mt-0.5 line-clamp-1">{service.description}</p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {service.category ? (
+                          <Badge variant="secondary">{service.category.name}</Badge>
+                        ) : (
+                          <span className="text-muted text-xs">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center gap-1 text-sm text-foreground">
+                          <Clock className="h-3.5 w-3.5 text-muted" />
+                          {service.duration_mins} דק׳
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center gap-1 text-sm font-medium text-foreground">
+                          <CircleDollarSign className="h-3.5 w-3.5 text-muted" />
+                          {formatPrice(parseFloat(service.price))}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Switch
+                          checked={service.is_active}
+                          onCheckedChange={(checked) =>
+                            toggleMutation.mutate({ service_id: service.id, is_active: checked })
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => openEdit(service as ServiceRow)}
+                            className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-surface transition-colors"
+                            aria-label="ערוך"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirm({ id: service.id, name: service.name })}
+                            className="p-2 rounded-lg text-muted hover:text-red-500 hover:bg-red-50 transition-colors"
+                            aria-label="מחק"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingService ? 'עריכת שירות' : 'הוספת שירות חדש'}</DialogTitle>
           </DialogHeader>
@@ -308,6 +406,37 @@ export function ServicesPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation dialog */}
+      <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>מחיקת שירות</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted leading-relaxed">
+            האם למחוק את{' '}
+            <span className="font-semibold text-foreground">{deleteConfirm?.name}</span>?{' '}
+            פעולה זו לא ניתנת לביטול. שירות עם תורים קיימים לא ניתן למחיקה.
+          </p>
+          <DialogFooter>
+            <Button
+              variant="destructive"
+              onClick={() => deleteConfirm && deleteMutation.mutate({ service_id: deleteConfirm.id })}
+              disabled={deleteMutation.isPending}
+              className="w-full sm:w-auto"
+            >
+              {deleteMutation.isPending ? 'מוחק...' : 'מחק שירות'}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirm(null)}
+              className="w-full sm:w-auto"
+            >
+              ביטול
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

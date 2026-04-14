@@ -34,7 +34,10 @@ export function Switch({ checked, onCheckedChange, disabled, className, id }: Sw
         className={cn(
           'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm',
           'transform ring-0 transition duration-200 ease-in-out',
-          checked ? 'translate-x-5' : 'translate-x-0',
+          // LTR checked → shift right (+5). RTL checked → shift left (-5).
+          // In dir="rtl" the thumb starts at the right side of the track (RTL inline flow),
+          // so translate-x-5 would push it off the right edge making it invisible.
+          checked ? 'ltr:translate-x-5 rtl:-translate-x-5' : 'translate-x-0',
         )}
       />
     </button>

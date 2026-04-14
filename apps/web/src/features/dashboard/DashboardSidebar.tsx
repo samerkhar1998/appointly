@@ -59,7 +59,7 @@ export function DashboardSidebar() {
     .toUpperCase();
 
   return (
-    <aside className="w-64 min-h-screen bg-white border-e border-border flex flex-col shadow-card shrink-0">
+    <aside className="hidden lg:flex w-64 min-h-screen bg-white border-e border-border flex-col shadow-card shrink-0">
       {/* Brand */}
       <div className="p-5 pb-4">
         <div className="flex items-center gap-3">

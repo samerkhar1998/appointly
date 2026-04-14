@@ -178,7 +178,7 @@ export function DashboardOverview() {
       </div>
 
       {/* Today's Schedule */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
