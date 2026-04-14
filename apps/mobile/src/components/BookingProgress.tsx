@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing } from '@/lib/theme';
+import { colors, fontSize, radius, spacing } from '@/lib/theme';
 import { t } from '@/lib/strings';
 
 const STEPS = [
@@ -16,88 +16,127 @@ interface Props {
 }
 
 export function BookingProgress({ currentStep }: Props) {
+  const totalSteps = STEPS.length;
+  const progress = (currentStep + 1) / totalSteps;
+
+  const currentLabel = STEPS[currentStep] ?? '';
+  const nextLabel = currentStep < totalSteps - 1 ? STEPS[currentStep + 1] : null;
+
   return (
     <View style={styles.container}>
-      {STEPS.map((label, i) => {
-        const isDone = i < currentStep;
-        const isActive = i === currentStep;
-        return (
-          <View key={label} style={styles.step}>
-            <View style={[styles.bar, (isDone || isActive) && styles.barActive]} />
-            <View style={styles.stepInner}>
-              <View
-                style={[
-                  styles.dot,
-                  isDone && styles.dotDone,
-                  isActive && styles.dotActive,
-                ]}
-              >
-                <Text style={[styles.dotLabel, (isDone || isActive) && styles.dotLabelActive]}>
-                  {isDone ? '✓' : String(i + 1)}
-                </Text>
-              </View>
-              <Text style={[styles.label, isActive && styles.labelActive]}>{label}</Text>
-            </View>
-          </View>
-        );
-      })}
+      {/* Step info row */}
+      <View style={styles.infoRow}>
+        <Text style={styles.stepCounter}>
+          {currentStep + 1} / {totalSteps}
+        </Text>
+        <View style={styles.stepNames}>
+          <Text style={styles.currentStep}>{currentLabel}</Text>
+          {nextLabel ? (
+            <Text style={styles.nextStep}> ← {nextLabel}</Text>
+          ) : null}
+        </View>
+      </View>
+
+      {/* Progress bar track */}
+      <View style={styles.track}>
+        <View style={[styles.fill, { width: `${progress * 100}%` }]} />
+        {/* Step markers */}
+        {STEPS.map((_, i) => {
+          const isDone = i < currentStep;
+          const isActive = i === currentStep;
+          const pos = ((i + 1) / totalSteps) * 100;
+          return (
+            <View
+              key={i}
+              style={[
+                styles.marker,
+                { left: `${pos}%` as unknown as number },
+                isDone && styles.markerDone,
+                isActive && styles.markerActive,
+              ]}
+            />
+          );
+        })}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row-reverse',
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    paddingHorizontal: spacing[1],
+    paddingHorizontal: spacing[5],
+    paddingTop: spacing[3],
+    paddingBottom: spacing[4],
+    gap: spacing[2],
   },
-  step: {
-    flex: 1,
-  },
-  bar: {
-    height: 2,
-    backgroundColor: colors.border,
-  },
-  barActive: {
-    backgroundColor: colors.brand[600],
-  },
-  stepInner: {
+
+  infoRow: {
+    flexDirection: 'row-reverse',
     alignItems: 'center',
-    gap: 2,
-    paddingVertical: spacing[2],
+    justifyContent: 'space-between',
   },
-  dot: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.surface.floating,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dotDone: {
-    backgroundColor: colors.brand[600],
-  },
-  dotActive: {
-    backgroundColor: colors.brand[100],
-    borderWidth: 2,
-    borderColor: colors.brand[600],
-  },
-  dotLabel: {
-    fontSize: 10,
-    fontFamily: 'Heebo_700Bold',
-    color: colors.muted,
-  },
-  dotLabelActive: {
-    color: colors.brand[700],
-  },
-  label: {
-    fontSize: 10,
+  stepCounter: {
     fontFamily: 'Heebo_500Medium',
+    fontSize: fontSize.xs,
     color: colors.muted,
   },
-  labelActive: {
+  stepNames: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  currentStep: {
+    fontFamily: 'Heebo_700Bold',
+    fontSize: fontSize.sm,
     color: colors.brand[700],
+    textAlign: 'right',
+  },
+  nextStep: {
+    fontFamily: 'Heebo_400Regular',
+    fontSize: fontSize.xs,
+    color: colors.mutedForeground,
+  },
+
+  track: {
+    height: 6,
+    backgroundColor: colors.border,
+    borderRadius: radius.full,
+    overflow: 'visible',
+    position: 'relative',
+  },
+  fill: {
+    height: 6,
+    backgroundColor: colors.brand[600],
+    borderRadius: radius.full,
+  },
+  marker: {
+    position: 'absolute',
+    top: -3,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.border,
+    marginLeft: -6,
+    borderWidth: 2,
+    borderColor: colors.white,
+  },
+  markerDone: {
+    backgroundColor: colors.brand[600],
+  },
+  markerActive: {
+    backgroundColor: colors.white,
+    borderColor: colors.brand[600],
+    borderWidth: 3,
+    width: 14,
+    height: 14,
+    top: -4,
+    marginLeft: -7,
+    shadowColor: colors.brand[600],
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });

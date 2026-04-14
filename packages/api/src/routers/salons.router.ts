@@ -143,6 +143,80 @@ export const salonsRouter = createTRPCRouter({
     return { items, total, page, per_page };
   }),
 
+  // Returns full public profile data for a salon by slug.
+  // Used by the mobile Salon Profile screen before entering booking flow.
+  getPublicProfile: publicProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(async ({ input, ctx }) => {
+      const salon = await ctx.db.salon.findUnique({
+        where: { slug: input.slug, is_active: true },
+        select: {
+          id: true,
+          slug: true,
+          name: true,
+          description: true,
+          phone: true,
+          address: true,
+          city: true,
+          logo_url: true,
+          cover_url: true,
+          is_public: true,
+          hours: { orderBy: { day_of_week: 'asc' } },
+          services: {
+            where: { is_active: true },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              duration_mins: true,
+              price: true,
+            },
+            orderBy: { sort_order: 'asc' },
+          },
+          members: {
+            where: { is_active: true },
+            include: {
+              staff: {
+                select: {
+                  id: true,
+                  display_name: true,
+                  bio: true,
+                  avatar_url: true,
+                  is_bookable: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!salon) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Salon not found' });
+      }
+
+      const staffList = salon.members
+        .filter((m): m is typeof m & { staff: NonNullable<typeof m.staff> } =>
+          m.staff !== null && m.staff.is_bookable,
+        )
+        .map((m) => m.staff);
+
+      return {
+        id: salon.id,
+        slug: salon.slug,
+        name: salon.name,
+        description: salon.description,
+        phone: salon.phone,
+        address: salon.address,
+        city: salon.city,
+        logo_url: salon.logo_url,
+        cover_url: salon.cover_url,
+        is_public: salon.is_public,
+        hours: salon.hours,
+        services: salon.services,
+        staff: staffList,
+      };
+    }),
+
   // Toggles the public/private visibility of a salon.
   // salon_id: the salon to update
   // is_public: true = discoverable in search, false = invite-only

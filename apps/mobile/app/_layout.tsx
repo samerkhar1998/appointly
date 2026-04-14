@@ -32,7 +32,6 @@ export default function RootLayout() {
     Heebo_700Bold,
   });
 
-  // Don't render until fonts are ready
   if (!fontsLoaded) return null;
 
   return (
@@ -41,9 +40,10 @@ export default function RootLayout() {
         <SafeAreaProvider>
           <StatusBar style="dark" />
           <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="index" />
-            <Stack.Screen name="discover" />
-            <Stack.Screen name="my-salons" />
+            {/* Tab group — the main shell */}
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            {/* Stack screens pushed on top of tabs */}
+            <Stack.Screen name="salon/[slug]" options={{ animation: 'slide_from_left' }} />
             <Stack.Screen name="invite/[token]" />
             <Stack.Screen name="book/[slug]" />
             <Stack.Screen name="cancel/[token]" />

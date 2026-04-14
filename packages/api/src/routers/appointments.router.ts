@@ -434,6 +434,60 @@ export const appointmentsRouter = createTRPCRouter({
       return { success: true };
     }),
 
+  // Returns upcoming and past appointments for a given phone number.
+  // Used by the mobile Home and My Appointments tabs.
+  // Always scoped by customer_phone — never a global query.
+  getByPhone: publicProcedure
+    .input(z.object({ phone: z.string().min(7) }))
+    .query(async ({ input, ctx }) => {
+      const appointments = await ctx.db.appointment.findMany({
+        where: {
+          customer_phone: input.phone,
+          status: { not: 'CANCELLED' },
+        },
+        select: {
+          id: true,
+          start_datetime: true,
+          end_datetime: true,
+          status: true,
+          customer_name: true,
+          salon: {
+            select: {
+              id: true,
+              slug: true,
+              name: true,
+              city: true,
+              logo_url: true,
+            },
+          },
+          service: {
+            select: {
+              id: true,
+              name: true,
+              duration_mins: true,
+              price: true,
+            },
+          },
+          staff: {
+            select: { id: true, display_name: true },
+          },
+        },
+        orderBy: { start_datetime: 'asc' },
+        take: 50,
+      });
+
+      return appointments.map((a) => ({
+        id: a.id,
+        start_datetime: a.start_datetime.toISOString(),
+        end_datetime: a.end_datetime.toISOString(),
+        status: a.status,
+        customer_name: a.customer_name,
+        salon: a.salon,
+        service: a.service,
+        staff_name: a.staff?.display_name ?? null,
+      }));
+    }),
+
   // Returns all appointments for a date range without pagination — used by the calendar view.
   listForCalendar: salonOwnerProcedure
     .input(
