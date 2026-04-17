@@ -104,14 +104,24 @@ export default function InviteScreen() {
           </View>
         </View>
 
-        {/* Book CTA */}
-        <Button
-          onPress={() => router.push(`/book/${salon.slug}?invite=${inviteToken}` as never)}
-          size="lg"
-          style={styles.cta}
-        >
-          {t('invite_cta')}
-        </Button>
+        {/* CTAs — view business profile or go straight to booking */}
+        <View style={styles.ctaRow}>
+          <Button
+            onPress={() => router.push(`/salon/${salon.slug}?invite=${inviteToken}` as never)}
+            size="lg"
+            variant="outline"
+            style={styles.ctaSecondary}
+          >
+            {t('invite_view_business')}
+          </Button>
+          <Button
+            onPress={() => router.push(`/book/${salon.slug}?invite=${inviteToken}` as never)}
+            size="lg"
+            style={styles.ctaPrimary}
+          >
+            {t('invite_cta')}
+          </Button>
+        </View>
       </View>
     </View>
   );
@@ -278,8 +288,11 @@ const styles = StyleSheet.create({
     color: colors.brand[700],
   },
 
-  cta: {
+  ctaRow: {
     margin: spacing[5],
     marginTop: spacing[2],
+    gap: spacing[3],
   },
+  ctaPrimary: { flex: 1 },
+  ctaSecondary: { flex: 1 },
 });

@@ -437,6 +437,8 @@ export const appointmentsRouter = createTRPCRouter({
   // Returns upcoming and past appointments for a given phone number.
   // Used by the mobile Home and My Appointments tabs.
   // Always scoped by customer_phone — never a global query.
+  // Includes cancel_token and cancellation_window_hours so the client
+  // can offer an in-app cancel button without requiring a magic link.
   getByPhone: publicProcedure
     .input(z.object({ phone: z.string().min(7) }))
     .query(async ({ input, ctx }) => {
@@ -451,6 +453,8 @@ export const appointmentsRouter = createTRPCRouter({
           end_datetime: true,
           status: true,
           customer_name: true,
+          cancel_token: true,
+          cancel_token_used: true,
           salon: {
             select: {
               id: true,
@@ -458,6 +462,7 @@ export const appointmentsRouter = createTRPCRouter({
               name: true,
               city: true,
               logo_url: true,
+              settings: { select: { cancellation_window_hours: true } },
             },
           },
           service: {
@@ -482,10 +487,78 @@ export const appointmentsRouter = createTRPCRouter({
         end_datetime: a.end_datetime.toISOString(),
         status: a.status,
         customer_name: a.customer_name,
-        salon: a.salon,
+        cancel_token: a.cancel_token_used ? null : a.cancel_token,
+        cancellation_window_hours: a.salon.settings?.cancellation_window_hours ?? 24,
+        salon: {
+          id: a.salon.id,
+          slug: a.salon.slug,
+          name: a.salon.name,
+          city: a.salon.city,
+          logo_url: a.salon.logo_url,
+        },
         service: a.service,
         staff_name: a.staff?.display_name ?? null,
       }));
+    }),
+
+  // Cancels an appointment directly for a logged-in CUSTOMER.
+  // Authorised by CustomerProfile — the customer must have previously completed
+  // OTP login, which creates their profile. No additional OTP challenge needed.
+  // Enforces the salon's cancellation_window_hours policy.
+  cancelByPhone: publicProcedure
+    .input(z.object({
+      appointment_id: z.string().cuid(),
+      phone: z.string().min(7),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      // Verify the caller has a server-side identity (proved phone via OTP at login).
+      const profile = await ctx.db.customerProfile.findUnique({
+        where: { phone: input.phone },
+        select: { id: true },
+      });
+      if (!profile) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Phone number not recognised. Please log in first.',
+        });
+      }
+
+      const appointment = await ctx.db.appointment.findUnique({
+        where: { id: input.appointment_id },
+        include: { salon: { include: { settings: true } } },
+      });
+
+      if (!appointment) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Appointment not found' });
+      }
+      // Ensure the caller owns this appointment.
+      if (appointment.customer_phone !== input.phone) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Not your appointment' });
+      }
+      if (appointment.status === 'CANCELLED') {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Appointment already cancelled' });
+      }
+
+      const windowHours = appointment.salon.settings?.cancellation_window_hours ?? 24;
+      const hoursUntil = (appointment.start_datetime.getTime() - Date.now()) / (1000 * 60 * 60);
+      if (hoursUntil < windowHours) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: `Cancellations must be made at least ${windowHours} hours in advance`,
+        });
+      }
+
+      await ctx.db.appointment.update({
+        where: { id: appointment.id },
+        data: { status: 'CANCELLED', cancelled_by: 'CUSTOMER', cancel_token_used: true },
+      });
+
+      void cancelReminders(appointment.id).catch((err: unknown) => {
+        // eslint-disable-next-line no-console
+        console.error('[queue] cancelReminders failed:', err);
+      });
+
+      return { success: true };
     }),
 
   // Returns all appointments for a date range without pagination — used by the calendar view.

@@ -25,9 +25,13 @@ if (!I18nManager.isRTL) {
 }
 
 // ─── Root redirect ─────────────────────────────────────────────────────────────
+// Handles the initial route on app launch only.
+// Once the user is past the launch (navigating within the app), this component
+// returns null so it doesn't compete with in-app navigation calls.
 function RootRedirect() {
   const { hasOnboarded, isLoading, user } = useAuthStore();
 
+  // While AsyncStorage is hydrating, show a blank splash to prevent flicker.
   if (isLoading) {
     return <View style={{ flex: 1, backgroundColor: colors.white }} />;
   }
@@ -37,14 +41,23 @@ function RootRedirect() {
     return <Redirect href="/onboarding" />;
   }
 
-  // Onboarding seen but no auth decision made yet (or after logout) — show
-  // the Customer / Owner / Guest selection screen.
+  // Onboarding seen but no auth decision made yet (or after logout).
   if (!user) {
     return <Redirect href="/auth" />;
   }
 
-  // Authenticated (customer, owner, or explicit guest) — go straight to tabs.
-  return <Redirect href="/(tabs)" />;
+  // Guests go to Discover; Home requires a saved phone to be useful.
+  if (user.role === 'GUEST') {
+    return <Redirect href="/(tabs)/discover" />;
+  }
+
+  // Authenticated owner — open calendar tab directly.
+  if (user.role === 'SALON_OWNER') {
+    return <Redirect href="/(tabs)/owner-calendar" />;
+  }
+
+  // Authenticated customer — open profile tab.
+  return <Redirect href="/(tabs)/profile" />;
 }
 
 export default function RootLayout() {

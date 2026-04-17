@@ -4,14 +4,20 @@ import { createTRPCRouter, publicProcedure, salonOwnerProcedure } from '../trpc'
 import { createStaffSchema, updateStaffSchema, staffScheduleSchema, addBlockedTimeSchema } from '@appointly/shared';
 
 export const staffRouter = createTRPCRouter({
-  // Public — used by booking flow
+  // Public — used by booking flow. Optionally filters by service_id (respects StaffService restrictions).
   list: publicProcedure
-    .input(z.object({ salon_id: z.string().cuid() }))
+    .input(z.object({
+      salon_id: z.string().cuid(),
+      service_id: z.string().cuid().optional(),
+    }))
     .query(async ({ input, ctx }) => {
       return ctx.db.staff.findMany({
         where: {
           salon_member: { salon_id: input.salon_id, is_active: true },
           is_bookable: true,
+          ...(input.service_id
+            ? { OR: [{ services: { none: {} } }, { services: { some: { service_id: input.service_id } } }] }
+            : {}),
         },
         include: {
           salon_member: { include: { user: { select: { id: true, name: true } } } },
@@ -20,7 +26,7 @@ export const staffRouter = createTRPCRouter({
       });
     }),
 
-  // Dashboard — all staff including non-bookable
+  // Dashboard — all staff including non-bookable, with their service restrictions
   listAll: salonOwnerProcedure
     .input(z.object({ salon_id: z.string().cuid() }))
     .query(async ({ input, ctx }) => {
@@ -31,6 +37,7 @@ export const staffRouter = createTRPCRouter({
             include: { user: { select: { id: true, name: true, email: true } } },
           },
           schedules: { orderBy: { day_of_week: 'asc' } },
+          services: { select: { service_id: true } },
         },
         orderBy: { display_name: 'asc' },
       });
@@ -177,6 +184,31 @@ export const staffRouter = createTRPCRouter({
         },
         orderBy: { start_datetime: 'asc' },
       });
+    }),
+
+  // Replaces all service restrictions for a staff member atomically.
+  // An empty service_ids array means the staff member can perform all services.
+  // staff_id: cuid of the Staff record
+  // service_ids: array of Service cuids the staff member is qualified to perform
+  // Returns { success: true } on completion.
+  setServices: salonOwnerProcedure
+    .input(z.object({
+      staff_id: z.string().cuid(),
+      service_ids: z.array(z.string().cuid()),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      await ctx.db.$transaction([
+        ctx.db.staffService.deleteMany({ where: { staff_id: input.staff_id } }),
+        ...(input.service_ids.length > 0
+          ? [ctx.db.staffService.createMany({
+              data: input.service_ids.map((service_id) => ({
+                staff_id: input.staff_id,
+                service_id,
+              })),
+            })]
+          : []),
+      ]);
+      return { success: true };
     }),
 
   // Deletes a single blocked-time record by its id.

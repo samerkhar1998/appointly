@@ -47,9 +47,11 @@ export default function OwnerLoginScreen() {
         phone: null,
         role: 'SALON_OWNER',
       };
-      // Auth is cookie-based — token stored in httpOnly cookie by the server
-      await loginAsOwner(user, '');
-      router.replace('/(tabs)' as never);
+      // Store the JWT so mobile can send it via Authorization header
+      // (React Native has no cookie jar — cookies set by the server are not persisted)
+      await loginAsOwner(user, result.token);
+      // Navigate to owner calendar tab directly so the dashboard is immediately visible
+      router.replace('/(tabs)/owner-calendar' as never);
     } catch {
       setError('אימייל או סיסמה שגויים');
     }

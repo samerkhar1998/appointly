@@ -115,6 +115,15 @@ export default function OtpScreen() {
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
+        {/* Dev bypass hint — visible only in development builds */}
+        {__DEV__ && (
+          <View style={styles.devHint}>
+            <Text style={styles.devHintText}>
+              {`🛠 מצב פיתוח — קוד OTP: ${process.env.EXPO_PUBLIC_TEST_OTP_CODE ?? '000000'}`}
+            </Text>
+          </View>
+        )}
+
         {isVerifying && (
           <View style={styles.verifying}>
             <ActivityIndicator color={colors.brand[600]} />
@@ -221,4 +230,21 @@ const styles = StyleSheet.create({
   resendDisabled: { color: colors.mutedForeground },
 
   backWrap: { width: '100%', marginTop: 'auto' },
+
+  devHint: {
+    backgroundColor: '#FFF3CD',
+    borderRadius: 10,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    borderWidth: 1,
+    borderColor: '#FBBF24',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+  },
+  devHintText: {
+    fontFamily: 'Heebo_500Medium',
+    fontSize: 12,
+    color: '#92400E',
+    textAlign: 'center',
+  },
 });

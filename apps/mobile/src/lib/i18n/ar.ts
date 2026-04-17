@@ -104,6 +104,14 @@ export const ar: Record<StringKey, string> = {
   cancel_window_suffix: 'ساعات قبل الموعد',
   cancel_resend: 'إعادة إرسال الرمز',
   cancel_resend_in: 'أعد الإرسال خلال',
+  cancel_appt_btn: 'إلغاء الموعد',
+  cancel_appt_confirm_title: 'إلغاء هذا الموعد؟',
+  cancel_appt_confirm_body: 'لا يمكن التراجع عن هذا الإجراء.',
+  cancel_appt_confirm_cta: 'نعم، إلغاء',
+  cancel_appt_too_late: 'لا يمكن الإلغاء قبل أقل من {hours} ساعة من الموعد.',
+  cancel_policy_label: 'سياسة الإلغاء',
+  cancel_policy_value: 'إلغاء مجاني حتى {hours} ساعة قبل الموعد',
+  cancel_policy_free: 'إلغاء مجاني في أي وقت',
 
   // Details labels on cards
   detail_duration: 'دقيقة',
@@ -131,6 +139,7 @@ export const ar: Record<StringKey, string> = {
   invite_private_badge: 'عمل خاص',
   invite_invited: 'تمت دعوتك شخصيًا',
   invite_cta: 'احجز موعدًا',
+  invite_view_business: 'عرض العمل',
   invite_invalid_title: 'رابط غير صالح',
   invite_invalid_sub: 'رابط الدعوة غير صالح أو انتهت صلاحيته.',
 

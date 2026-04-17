@@ -19,7 +19,10 @@ export default function StaffScreen() {
   const insets = useSafeAreaInsets();
 
   const { data, isLoading, isError } = trpc.staff.list.useQuery(
-    { salon_id: booking.salon_id ?? '' },
+    {
+      salon_id: booking.salon_id ?? '',
+      ...(booking.service_id ? { service_id: booking.service_id } : {}),
+    },
     { enabled: !!booking.salon_id },
   );
 

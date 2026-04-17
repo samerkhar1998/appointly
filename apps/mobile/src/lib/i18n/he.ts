@@ -103,6 +103,14 @@ export const he = {
   cancel_window_suffix: 'שעות לפני התור',
   cancel_resend: 'שלח קוד חדש',
   cancel_resend_in: 'שלח שוב בעוד',
+  cancel_appt_btn: 'ביטול תור',
+  cancel_appt_confirm_title: 'לבטל את התור?',
+  cancel_appt_confirm_body: 'פעולה זו אינה הפיכה.',
+  cancel_appt_confirm_cta: 'כן, בטל',
+  cancel_appt_too_late: 'לא ניתן לבטל פחות מ-{hours} שעות לפני התור.',
+  cancel_policy_label: 'מדיניות ביטול',
+  cancel_policy_value: 'ביטול חינם עד {hours} שעות לפני התור',
+  cancel_policy_free: 'ביטול ללא עלות',
 
   // Details labels on cards
   detail_duration: 'דקות',
@@ -130,6 +138,7 @@ export const he = {
   invite_private_badge: 'עסק פרטי',
   invite_invited: 'הוזמנת אישית',
   invite_cta: 'קבע תור',
+  invite_view_business: 'צפה בעסק',
   invite_invalid_title: 'קישור לא תקף',
   invite_invalid_sub: 'קישור ההזמנה לא תקף או שפג תוקפו.',
 

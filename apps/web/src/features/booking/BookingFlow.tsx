@@ -10,6 +10,33 @@ import { StepConfirmation } from './steps/StepConfirmation';
 import { trpc } from '@/lib/trpc';
 import { Scissors } from 'lucide-react';
 
+const CUSTOMER_STORAGE_KEY = 'appointly:customer';
+
+type SavedCustomer = {
+  name: string;
+  phone: string;
+  email: string;
+};
+
+// Reads previously-saved customer details from localStorage.
+function loadSavedCustomer(): SavedCustomer | null {
+  try {
+    const raw = localStorage.getItem(CUSTOMER_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as SavedCustomer) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Persists customer details so the Details step is pre-filled on next visit.
+function saveCustomer(data: SavedCustomer) {
+  try {
+    localStorage.setItem(CUSTOMER_STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // localStorage may be unavailable in private browsing — fail silently
+  }
+}
+
 export type BookingState = {
   salon_id: string;
   salon_name: string;
@@ -61,13 +88,20 @@ export function BookingFlow({
   clientToken,
 }: BookingFlowProps) {
   const [step, setStep] = useState<Step>('services');
-  const [booking, setBooking] = useState<Partial<BookingState>>({
-    salon_id: salonId,
-    salon_name: salonName,
-    salon_timezone: salonTimezone,
+  const [booking, setBooking] = useState<Partial<BookingState>>(() => {
+    // Pre-fill from localStorage on first render (skips re-typing on repeat visits)
+    const saved = loadSavedCustomer();
+    return {
+      salon_id: salonId,
+      salon_name: salonName,
+      salon_timezone: salonTimezone,
+      customer_name: saved?.name ?? '',
+      customer_phone: saved?.phone ?? '',
+      customer_email: saved?.email ?? '',
+    };
   });
 
-  // Pre-fill customer details from client token
+  // Pre-fill customer details from client token (takes priority over localStorage)
   const { data: clientData } = trpc.salonClients.getByToken.useQuery(
     { client_token: clientToken! },
     { enabled: !!clientToken },
@@ -99,11 +133,19 @@ export function BookingFlow({
     if (prev) setStep(prev);
   }
 
-  // If client token is present, skip OTP when we reach that step
+  // If client token is present, skip OTP when we reach that step.
+  // Also persists customer details to localStorage so the form is pre-filled next time.
   function advanceFromDetails(details: Partial<BookingState>) {
     const next = clientToken ? 'confirmation' : 'otp';
     setBooking((prev) => ({ ...prev, ...details }));
     setStep(next);
+    if (details.customer_name && details.customer_phone) {
+      saveCustomer({
+        name: details.customer_name,
+        phone: details.customer_phone,
+        email: details.customer_email ?? '',
+      });
+    }
   }
 
   return (
@@ -193,6 +235,7 @@ export function BookingFlow({
         {step === 'staff' && (
           <StepStaff
             salonId={salonId}
+            serviceId={booking.service_id ?? undefined}
             onSelect={(staff) =>
               advance({
                 staff_id: staff?.id ?? null,

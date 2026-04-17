@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -13,6 +14,7 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { trpc } from '@/lib/trpc';
+import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Icon } from '@/components/ui/Icon';
@@ -28,10 +30,18 @@ type Appointment = {
   end_datetime: string;
   status: string;
   customer_name: string;
+  cancel_token: string | null;
+  cancellation_window_hours: number;
   salon: { id: string; slug: string; name: string; city: string | null; logo_url: string | null };
   service: { id: string; name: string; duration_mins: number; price: unknown };
   staff_name: string | null;
 };
+
+// Returns true if the appointment can still be cancelled within the salon's window.
+function isCancellable(startDatetime: string, windowHours: number): boolean {
+  const hoursUntil = (new Date(startDatetime).getTime() - Date.now()) / (1000 * 60 * 60);
+  return hoursUntil >= windowHours;
+}
 
 function statusLabel(status: string): string {
   switch (status) {
@@ -56,12 +66,63 @@ function statusColors(status: string): { bg: string; border: string; text: strin
   }
 }
 
-function AppointmentRow({ appt }: { appt: Appointment }) {
+function AppointmentRow({
+  appt,
+  customerPhone,
+  isLoggedIn,
+  onCancelled,
+}: {
+  appt: Appointment;
+  customerPhone: string;
+  isLoggedIn: boolean;
+  onCancelled: (id: string) => void;
+}) {
   const tz = 'Asia/Jerusalem';
+  const isUpcoming = new Date(appt.start_datetime) >= new Date();
   const sc = statusColors(appt.status);
+
+  const cancelByPhone = trpc.appointments.cancelByPhone.useMutation({
+    onSuccess: () => onCancelled(appt.id),
+    onError: (err) => Alert.alert(t('cancel_error_title'), err.message),
+  });
+
+  // Determines the right cancel action:
+  //  - Logged-in CUSTOMER: direct server call, no token needed
+  //  - Guest with cancel token: navigate to the magic-link cancel screen
+  function handleCancelPress() {
+    const canCancel = isCancellable(appt.start_datetime, appt.cancellation_window_hours);
+
+    if (!canCancel) {
+      Alert.alert(
+        t('cancel_error_title'),
+        t('cancel_appt_too_late').replace('{hours}', String(appt.cancellation_window_hours)),
+      );
+      return;
+    }
+
+    Alert.alert(
+      t('cancel_appt_confirm_title'),
+      t('cancel_appt_confirm_body'),
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('cancel_appt_confirm_cta'),
+          style: 'destructive',
+          onPress: () => {
+            if (isLoggedIn) {
+              cancelByPhone.mutate({ appointment_id: appt.id, phone: customerPhone });
+            } else if (appt.cancel_token) {
+              router.push(`/cancel/${appt.cancel_token}` as never);
+            }
+          },
+        },
+      ],
+    );
+  }
 
   return (
     <View style={styles.apptCard}>
+      {/* Salon logo */}
       <View style={styles.apptLogo}>
         {appt.salon.logo_url ? (
           <Image source={{ uri: appt.salon.logo_url }} style={styles.apptLogoImg} />
@@ -77,17 +138,40 @@ function AppointmentRow({ appt }: { appt: Appointment }) {
             <Text style={[styles.badgeText, { color: sc.text }]}>{statusLabel(appt.status)}</Text>
           </View>
         </View>
+
         <Text style={styles.apptService} numberOfLines={1}>{appt.service.name}</Text>
+
         <View style={styles.apptMetaRow}>
           <Icon name="calendar-outline" size={12} color={colors.mutedForeground} />
-          <Text style={styles.apptDate}>{formatDate(appt.start_datetime, tz)} • {formatTime(appt.start_datetime, tz)}</Text>
+          <Text style={styles.apptDate}>
+            {formatDate(appt.start_datetime, tz)} • {formatTime(appt.start_datetime, tz)}
+          </Text>
         </View>
+
         {appt.staff_name ? (
           <View style={styles.apptMetaRow}>
             <Icon name="person-outline" size={12} color={colors.mutedForeground} />
             <Text style={styles.apptStaff}>{appt.staff_name}</Text>
           </View>
         ) : null}
+
+        {/* Cancel button — only shown on upcoming, non-cancelled appointments */}
+        {isUpcoming && appt.status !== 'CANCELLED' && (appt.cancel_token || isLoggedIn) && (
+          <View style={styles.cancelRow}>
+            <Pressable
+              onPress={handleCancelPress}
+              disabled={cancelByPhone.isPending}
+              style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.7 }]}
+            >
+              <Text style={styles.cancelBtnText}>
+                {cancelByPhone.isPending ? '...' : t('cancel_appt_btn')}
+              </Text>
+            </Pressable>
+            <Text style={styles.cancelPolicy}>
+              {t('cancel_window')} {appt.cancellation_window_hours} {t('cancel_window_suffix')}
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -149,14 +233,25 @@ function PhoneEntry({ onSave }: { onSave: (p: string) => void }) {
 
 export default function MyAppointmentsTab() {
   const insets = useSafeAreaInsets();
+  const user = useAuthStore((s) => s.user);
+  const isLoggedIn = user?.role === 'CUSTOMER' && !!user.phone;
+
   const [phone, setPhone] = useState<string | null>(null);
   const [phoneLoaded, setPhoneLoaded] = useState(false);
+  // Tracks locally-cancelled IDs so the UI updates instantly without a refetch.
+  const [cancelledIds, setCancelledIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    // Prefer auth store phone for logged-in customers; fall back to AsyncStorage.
+    if (user?.phone) {
+      setPhone(user.phone);
+      setPhoneLoaded(true);
+      return;
+    }
     AsyncStorage.getItem(PHONE_KEY)
       .then((val) => { setPhone(val); setPhoneLoaded(true); })
       .catch(() => setPhoneLoaded(true));
-  }, []);
+  }, [user?.phone]);
 
   const handleSavePhone = useCallback((newPhone: string) => {
     setPhone(newPhone);
@@ -170,12 +265,11 @@ export default function MyAppointmentsTab() {
 
   const now = new Date();
   const appointments = (data ?? []) as Appointment[];
-  const upcoming = appointments.filter((a: Appointment) => new Date(a.start_datetime) >= now);
-  const past = appointments
-    .filter((a: Appointment) => new Date(a.start_datetime) < now)
-    .sort((a: Appointment, b: Appointment) =>
-      new Date(b.start_datetime).getTime() - new Date(a.start_datetime).getTime(),
-    );
+  const visible = appointments.filter((a) => !cancelledIds.has(a.id));
+  const upcoming = visible.filter((a) => new Date(a.start_datetime) >= now);
+  const past = visible
+    .filter((a) => new Date(a.start_datetime) < now)
+    .sort((a, b) => new Date(b.start_datetime).getTime() - new Date(a.start_datetime).getTime());
 
   if (!phoneLoaded) return <View style={styles.root} />;
 
@@ -184,7 +278,6 @@ export default function MyAppointmentsTab() {
       style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {/* Fixed header */}
       <View style={[styles.header, { paddingTop: insets.top + spacing[4] }]}>
         <Text style={styles.screenTitle}>{t('my_appointments_title')}</Text>
       </View>
@@ -225,7 +318,13 @@ export default function MyAppointmentsTab() {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>{t('my_appointments_upcoming')}</Text>
                 {upcoming.map((appt) => (
-                  <AppointmentRow key={appt.id} appt={appt} />
+                  <AppointmentRow
+                    key={appt.id}
+                    appt={appt}
+                    customerPhone={phone ?? ''}
+                    isLoggedIn={isLoggedIn}
+                    onCancelled={(id) => setCancelledIds((prev) => new Set([...prev, id]))}
+                  />
                 ))}
               </View>
             )}
@@ -233,7 +332,13 @@ export default function MyAppointmentsTab() {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>{t('my_appointments_past')}</Text>
                 {past.map((appt) => (
-                  <AppointmentRow key={appt.id} appt={appt} />
+                  <AppointmentRow
+                    key={appt.id}
+                    appt={appt}
+                    customerPhone={phone ?? ''}
+                    isLoggedIn={isLoggedIn}
+                    onCancelled={(id) => setCancelledIds((prev) => new Set([...prev, id]))}
+                  />
                 ))}
               </View>
             )}
@@ -353,6 +458,37 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     color: colors.mutedForeground,
     textAlign: 'right',
+  },
+
+  // Cancel row inside a card
+  cancelRow: {
+    marginTop: spacing[2],
+    paddingTop: spacing[2],
+    borderTopWidth: 1,
+    borderTopColor: colors.surface.floating,
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing[2],
+  },
+  cancelBtn: {
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[1.5],
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.danger,
+  },
+  cancelBtnText: {
+    fontFamily: 'Heebo_500Medium',
+    fontSize: fontSize.xs,
+    color: colors.danger,
+  },
+  cancelPolicy: {
+    fontFamily: 'Heebo_400Regular',
+    fontSize: fontSize.xs,
+    color: colors.mutedForeground,
+    textAlign: 'right',
+    flex: 1,
   },
 
   // Phone entry card

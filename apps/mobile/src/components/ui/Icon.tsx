@@ -94,6 +94,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   'location-outline':           MapPin,
 
   // Social / people
+  'people':                     Users,
   'people-outline':             Users,
   'star':                      Star,
   'star-outline':               Star,
@@ -134,7 +135,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
 // ─── Filled variants use thicker stroke to simulate "filled" look ─────────────
 const FILLED_VARIANTS = new Set([
-  'home', 'search', 'calendar', 'person', 'cut', 'star',
+  'home', 'search', 'calendar', 'person', 'cut', 'star', 'people',
 ]);
 
 // ─── Public types ─────────────────────────────────────────────────────────────

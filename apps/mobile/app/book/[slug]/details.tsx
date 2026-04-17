@@ -5,9 +5,11 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useBookingStore } from '@/store/booking';
+import { useAuthStore } from '@/store/auth';
 import { BookingProgress } from '@/components/BookingProgress';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { trpc } from '@/lib/trpc';
 import { formatDate, formatTime, normalisePhone } from '@/lib/utils';
 import { colors, spacing } from '@/lib/theme';
 import { t } from '@/lib/strings';
@@ -26,22 +28,45 @@ export default function DetailsScreen() {
   const setBooking = useBookingStore((s) => s.setBooking);
   const insets = useSafeAreaInsets();
 
+  const user = useAuthStore((s) => s.user);
+  // A logged-in CUSTOMER has a server-verified phone — pre-fill their details.
+  const isLoggedInCustomer = user?.role === 'CUSTOMER' && !!user.phone;
+
+  const issueToken = trpc.verification.issueTokenForKnownCustomer.useMutation();
+
   const { control, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: booking.customer_name ?? '',
-      phone: booking.customer_phone ?? '',
+      // Prefer booking store values (user navigated back), fall back to auth store.
+      name: booking.customer_name || user?.name || '',
+      phone: booking.customer_phone || user?.phone || '',
       email: booking.customer_email ?? '',
     },
   });
 
-  function onSubmit(data: FormData) {
+  // Saves details to the booking store, then either:
+  //  - CUSTOMER: obtains a verification token silently and skips to confirmation.
+  //  - Guest: navigates to the OTP screen as normal.
+  async function onSubmit(data: FormData) {
+    const normalisedPhone = normalisePhone(data.phone);
     setBooking({
       customer_name: data.name,
-      customer_phone: normalisePhone(data.phone),
+      customer_phone: normalisedPhone,
       customer_email: data.email ?? '',
     });
-    router.push(`/book/${slug}/otp` as never);
+
+    if (isLoggedInCustomer) {
+      try {
+        const result = await issueToken.mutateAsync({ phone: normalisedPhone });
+        setBooking({ verification_token: result.verification_token });
+        router.push(`/book/${slug}/confirmation` as never);
+      } catch {
+        // Phone not in CustomerProfile (edge case) — fall back to OTP flow.
+        router.push(`/book/${slug}/otp` as never);
+      }
+    } else {
+      router.push(`/book/${slug}/otp` as never);
+    }
   }
 
   const tz = booking.salon_timezone ?? 'Asia/Jerusalem';
@@ -85,6 +110,13 @@ export default function DetailsScreen() {
           </View>
         )}
 
+        {/* Pre-fill notice for logged-in customers */}
+        {isLoggedInCustomer && (
+          <View style={styles.autofillBanner}>
+            <Text style={styles.autofillText}>הפרטים מולאו מחשבונך</Text>
+          </View>
+        )}
+
         {/* Form */}
         <View style={styles.form}>
           <Controller
@@ -110,7 +142,9 @@ export default function DetailsScreen() {
                 label={t('details_phone_label')}
                 placeholder={t('details_phone_placeholder')}
                 value={value}
-                onChangeText={onChange}
+                // Phone is locked for logged-in customers — it is their verified number.
+                onChangeText={isLoggedInCustomer ? undefined : onChange}
+                editable={!isLoggedInCustomer}
                 keyboardType="phone-pad"
                 autoComplete="tel"
                 error={errors.phone?.message}
@@ -137,8 +171,12 @@ export default function DetailsScreen() {
         </View>
 
         <View style={styles.actions}>
-          <Button onPress={handleSubmit(onSubmit)} size="lg">
-            {t('details_cta')}
+          <Button
+            onPress={handleSubmit(onSubmit)}
+            size="lg"
+            disabled={issueToken.isPending}
+          >
+            {issueToken.isPending ? 'מכין...' : t('details_cta')}
           </Button>
           <Button variant="outline" onPress={() => router.back()}>
             {t('back')}
@@ -198,6 +236,22 @@ const styles = StyleSheet.create({
     fontFamily: 'Heebo_600SemiBold',
     fontSize: 13,
     color: colors.foreground,
+  },
+
+  autofillBanner: {
+    backgroundColor: colors.brand[50],
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.brand[100],
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[2],
+    alignItems: 'flex-end',
+  },
+  autofillText: {
+    fontFamily: 'Heebo_500Medium',
+    fontSize: 13,
+    color: colors.brand[700],
+    textAlign: 'right',
   },
 
   form: { gap: spacing[4] },

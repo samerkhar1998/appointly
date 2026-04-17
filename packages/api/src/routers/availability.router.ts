@@ -69,6 +69,8 @@ export const availabilityRouter = createTRPCRouter({
     const salonClose = parseLocalTime(salonHoursForDay.close_time, requestedDate, tzOffset);
 
     // ── 3. Load staff ───────────────────────────────────────────────────────
+    // Staff with an empty StaffService set can perform all services.
+    // Staff with entries are restricted to those specific services.
     let staffList: Array<{
       id: string;
       schedules: Array<{ day_of_week: number; start_time: string; end_time: string; is_working: boolean }>;
@@ -80,6 +82,11 @@ export const availabilityRouter = createTRPCRouter({
           id: requestedStaffId,
           is_bookable: true,
           salon_member: { salon_id, is_active: true },
+          // Staff is eligible if they have no service restrictions, or the requested service is listed
+          OR: [
+            { services: { none: {} } },
+            { services: { some: { service_id } } },
+          ],
         },
         include: { schedules: true },
       });
@@ -92,6 +99,10 @@ export const availabilityRouter = createTRPCRouter({
         where: {
           is_bookable: true,
           salon_member: { salon_id, is_active: true },
+          OR: [
+            { services: { none: {} } },
+            { services: { some: { service_id } } },
+          ],
         },
         include: { schedules: true },
       });

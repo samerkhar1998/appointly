@@ -208,6 +208,7 @@ export const salonsRouter = createTRPCRouter({
               },
             },
           },
+          settings: { select: { cancellation_window_hours: true } },
         },
       });
 
@@ -232,6 +233,7 @@ export const salonsRouter = createTRPCRouter({
         logo_url: salon.logo_url,
         cover_url: salon.cover_url,
         is_public: salon.is_public,
+        cancellation_window_hours: salon.settings?.cancellation_window_hours ?? 24,
         hours: salon.hours,
         services: salon.services,
         staff: staffList,
@@ -250,6 +252,33 @@ export const salonsRouter = createTRPCRouter({
         data: { is_public: input.is_public },
         select: { id: true, is_public: true },
       });
+    }),
+
+  // Lists all active invite tokens for a salon.
+  // salon_id: the salon to list invites for
+  // Returns an array of invite records with id, token, expires_at, created_at.
+  getInvites: salonOwnerProcedure
+    .input(z.object({ salon_id: z.string().cuid() }))
+    .query(async ({ input, ctx }) => {
+      await assertSalonMember(ctx, input.salon_id);
+      return ctx.db.salonInvite.findMany({
+        where: { salon_id: input.salon_id },
+        orderBy: { created_at: 'desc' },
+        select: { id: true, token: true, expires_at: true, created_at: true },
+      });
+    }),
+
+  // Revokes (deletes) an invite token for a salon.
+  // invite_id: the invite record to delete
+  // salon_id: used to verify ownership
+  revokeInvite: salonOwnerProcedure
+    .input(z.object({ salon_id: z.string().cuid(), invite_id: z.string().cuid() }))
+    .mutation(async ({ input, ctx }) => {
+      await assertSalonMember(ctx, input.salon_id);
+      await ctx.db.salonInvite.deleteMany({
+        where: { id: input.invite_id, salon_id: input.salon_id },
+      });
+      return { success: true };
     }),
 
   // Creates a new invite token for a private salon.

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Users, Calendar, UserMinus, Clock, CalendarOff, X } from 'lucide-react';
+import { Plus, Users, Calendar, UserMinus, Clock, CalendarOff, X, Scissors } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { useSalon } from '@/lib/use-salon';
 import { Button } from '@/components/ui/button';
@@ -594,12 +594,124 @@ function formatTime12(date: Date | string, timezone: string): string {
   }).format(new Date(date));
 }
 
+// Dialog for configuring which services a staff member is qualified to perform.
+// An empty selection means the staff member can perform all services (no restriction).
+// staffId: cuid of the Staff record
+// salonId: used to load all available salon services
+// existingServiceIds: set of service_ids currently assigned to this staff member
+function ServicesDialog({
+  staffId,
+  staffName,
+  salonId,
+  existingServiceIds,
+  open,
+  onClose,
+}: {
+  staffId: string;
+  staffName: string;
+  salonId: string;
+  existingServiceIds: string[];
+  open: boolean;
+  onClose: () => void;
+}) {
+  const utils = trpc.useUtils();
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(existingServiceIds));
+
+  const { data: services, isLoading: servicesLoading } = trpc.services.list.useQuery(
+    { salon_id: salonId },
+    { enabled: open },
+  );
+
+  const setServicesMutation = trpc.staff.setServices.useMutation({
+    onSuccess: () => {
+      utils.staff.listAll.invalidate();
+      toast({ title: 'שירותי העובד עודכנו' });
+      onClose();
+    },
+    onError: (err) => toast({ title: 'שגיאה', description: err.message, variant: 'destructive' }),
+  });
+
+  // Toggles a service in the selected set.
+  function toggle(serviceId: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(serviceId) ? next.delete(serviceId) : next.add(serviceId);
+      return next;
+    });
+  }
+
+  // Saves the current selection. Empty selection = no restrictions (all services).
+  function handleSave() {
+    setServicesMutation.mutate({ staff_id: staffId, service_ids: Array.from(selected) });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-base">שירותים — {staffName}</DialogTitle>
+        </DialogHeader>
+
+        <p className="text-xs text-muted -mt-1">
+          בחר את השירותים שהעובד יכול לבצע. אם לא נבחר שום שירות — העובד יוכל לבצע את כל השירותים.
+        </p>
+
+        <div className="space-y-1.5 max-h-[55vh] overflow-y-auto pe-1">
+          {servicesLoading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-10 rounded-xl bg-surface animate-pulse" />
+            ))
+          ) : !services?.length ? (
+            <p className="text-sm text-muted text-center py-4">אין שירותים מוגדרים</p>
+          ) : (
+            services.map((service) => {
+              const isSelected = selected.has(service.id);
+              return (
+                <button
+                  key={service.id}
+                  type="button"
+                  onClick={() => toggle(service.id)}
+                  className={[
+                    'w-full flex items-center justify-between rounded-xl border px-4 py-2.5 text-sm transition-colors',
+                    isSelected
+                      ? 'border-brand/40 bg-brand/5 text-foreground'
+                      : 'border-border/40 bg-surface text-muted hover:text-foreground',
+                  ].join(' ')}
+                >
+                  <span className="font-medium">{service.name}</span>
+                  <span className="text-xs">{service.duration_mins} דק׳</span>
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        {selected.size === 0 && (
+          <p className="text-xs text-muted/70 text-center">
+            ✓ ללא הגבלה — העובד יוכל לבצע את כל השירותים
+          </p>
+        )}
+
+        <DialogFooter>
+          <Button onClick={handleSave} disabled={setServicesMutation.isPending} className="w-full sm:w-auto">
+            {setServicesMutation.isPending ? 'שומר...' : 'שמור'}
+          </Button>
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">
+            ביטול
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function StaffPage() {
   const { salon, isLoading: salonLoading } = useSalon();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deactivateId, setDeactivateId] = useState<string | null>(null);
   const [scheduleStaffId, setScheduleStaffId] = useState<string | null>(null);
   const [daysOffStaffId, setDaysOffStaffId] = useState<string | null>(null);
+  const [servicesStaffId, setServicesStaffId] = useState<string | null>(null);
   const utils = trpc.useUtils();
 
   const { data: staffList, isLoading } = trpc.staff.listAll.useQuery(
@@ -663,6 +775,7 @@ export function StaffPage() {
 
   const scheduleStaff = scheduleStaffId ? staffList?.find((s) => s.id === scheduleStaffId) : null;
   const daysOffStaff = daysOffStaffId ? staffList?.find((s) => s.id === daysOffStaffId) : null;
+  const servicesStaff = servicesStaffId ? staffList?.find((s) => s.id === servicesStaffId) : null;
 
   if (salonLoading || isLoading) {
     return (
@@ -763,6 +876,14 @@ export function StaffPage() {
                       <span className="text-xs text-muted/60">אין שעות עבודה</span>
                     )}
                     <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setServicesStaffId(staff.id)}
+                        className="flex items-center gap-1 text-xs text-muted hover:text-foreground hover:underline"
+                        disabled={!isActive}
+                      >
+                        <Scissors className="h-3.5 w-3.5" />
+                        {staff.services.length > 0 ? `${staff.services.length} שירות` : 'שירותים'}
+                      </button>
                       <button
                         onClick={() => setDaysOffStaffId(staff.id)}
                         className="flex items-center gap-1 text-xs text-muted hover:text-foreground hover:underline"
@@ -893,6 +1014,19 @@ export function StaffPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Services dialog */}
+      {servicesStaff && salon?.id && (
+        <ServicesDialog
+          key={servicesStaff.id + '-services'}
+          staffId={servicesStaff.id}
+          staffName={servicesStaff.display_name}
+          salonId={salon.id}
+          existingServiceIds={servicesStaff.services.map((s) => s.service_id)}
+          open={!!servicesStaffId}
+          onClose={() => setServicesStaffId(null)}
+        />
+      )}
 
       {/* Days off dialog */}
       {daysOffStaff && (
