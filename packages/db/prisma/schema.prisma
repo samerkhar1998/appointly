@@ -371,6 +371,23 @@ model PhoneVerification {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// CustomerProfile — global customer identity keyed by phone number.
+// Created once on first OTP login when the user provides their name.
+// Subsequent logins look this up so the name step is skipped.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CustomerProfile {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  phone String @unique
+  name  String
+
+  @@index([phone])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SalonClient
 // ─────────────────────────────────────────────────────────────────────────────
 

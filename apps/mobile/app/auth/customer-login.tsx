@@ -10,11 +10,9 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { trpc } from '@/lib/trpc';
 import { useAuthStore } from '@/store/auth';
-import type { AuthUser } from '@/store/auth';
 import { Icon } from '@/components/ui/Icon';
 import { colors, fontSize, radius, shadows, spacing } from '@/lib/theme';
 
@@ -59,6 +57,7 @@ export default function CustomerLoginScreen() {
 
   const sendOtp = trpc.verification.sendOTP.useMutation();
   const verifyOtp = trpc.verification.verifyOTP.useMutation();
+  const setCustomerName = trpc.verification.setCustomerName.useMutation();
 
   function startResendCountdown() {
     setResendSeconds(60);
@@ -99,16 +98,12 @@ export default function CustomerLoginScreen() {
       const result = await verifyOtp.mutateAsync({ phone: phone.trim(), code });
       setVerificationToken(result.verification_token);
 
-      // Check if this phone already has a saved name from a previous login.
-      // If so, skip the name step and log in immediately.
-      const savedRaw = await AsyncStorage.getItem('@appointly/auth_user');
-      if (savedRaw) {
-        const saved = JSON.parse(savedRaw) as AuthUser;
-        if (saved.phone === phone.trim() && saved.name && saved.name !== 'לקוח') {
-          await loginAsCustomer(phone.trim(), saved.name);
-          router.replace('/(tabs)/profile' as never);
-          return;
-        }
+      // If the server already has a name on file for this phone, skip the name
+      // step entirely and log in immediately — no local storage fallback needed.
+      if (result.customer_name) {
+        await loginAsCustomer(phone.trim(), result.customer_name);
+        router.replace('/(tabs)/profile' as never);
+        return;
       }
 
       setStep('name');
@@ -127,8 +122,19 @@ export default function CustomerLoginScreen() {
 
   async function handleFinish() {
     const trimmedName = name.trim() || 'לקוח';
+    setError('');
+    try {
+      // Persist the name to the server so future logins on any device skip this step.
+      await setCustomerName.mutateAsync({
+        phone: phone.trim(),
+        verification_token: verificationToken,
+        name: trimmedName,
+      });
+    } catch {
+      // Non-fatal: the name save failed (token may already be burned by a race).
+      // The user still logs in locally; they will be prompted again next time.
+    }
     await loginAsCustomer(phone.trim(), trimmedName);
-    // Navigate to profile tab so the user immediately sees their logged-in state
     router.replace('/(tabs)/profile' as never);
   }
 
@@ -246,7 +252,9 @@ export default function CustomerLoginScreen() {
             {/* Dev bypass hint — visible only in development builds */}
             {__DEV__ && (
               <View style={styles.devHint}>
-                <Text style={styles.devHintText}>🛠 מצב פיתוח — קוד OTP: 000000</Text>
+                <Text style={styles.devHintText}>
+                  {`🛠 מצב פיתוח — קוד OTP: ${process.env.EXPO_PUBLIC_TEST_OTP_CODE ?? '000000'}`}
+                </Text>
               </View>
             )}
 

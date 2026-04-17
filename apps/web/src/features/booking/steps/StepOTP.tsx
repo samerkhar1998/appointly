@@ -138,7 +138,10 @@ export function StepOTP({ salonId, phone, onVerified, onBack }: Props) {
       {/* Dev bypass hint — shown only outside production */}
       {process.env.NODE_ENV !== 'production' && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-center text-xs text-amber-800">
-          🛠 מצב פיתוח — קוד OTP: <span className="font-bold tracking-widest">000000</span>
+          🛠 מצב פיתוח — קוד OTP:{' '}
+          <span className="font-bold tracking-widest">
+            {process.env.NEXT_PUBLIC_TEST_OTP_CODE ?? '000000'}
+          </span>
         </div>
       )}
 
