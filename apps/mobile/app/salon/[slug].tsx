@@ -10,6 +10,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { trpc } from '@/lib/trpc';
+import { Icon } from '@/components/ui/Icon';
 import { colors, fontSize, radius, shadows, spacing } from '@/lib/theme';
 import { t } from '@/lib/strings';
 
@@ -34,6 +35,23 @@ type SalonStaff = {
   display_name: string;
   bio: string | null;
   avatar_url: string | null;
+};
+
+type SalonProfile = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  phone: string | null;
+  address: string | null;
+  city: string | null;
+  logo_url: string | null;
+  cover_url: string | null;
+  is_public: boolean;
+  cancellation_window_hours: number;
+  hours: SalonHour[];
+  services: SalonService[];
+  staff: SalonStaff[];
 };
 
 const DAY_NAMES: Record<number, string> = {
@@ -226,6 +244,22 @@ export default function SalonProfileScreen() {
               ))}
             </View>
           )}
+        </View>
+
+        {/* Cancellation policy */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('cancel_policy_label')}</Text>
+          <View style={styles.policyCard}>
+            <Icon name="calendar-outline" size={18} color={colors.brand[600]} />
+            <Text style={styles.policyText}>
+              {(salon as unknown as SalonProfile).cancellation_window_hours === 0
+                ? t('cancel_policy_free')
+                : t('cancel_policy_value').replace(
+                    '{hours}',
+                    String((salon as unknown as SalonProfile).cancellation_window_hours),
+                  )}
+            </Text>
+          </View>
         </View>
 
         {/* Staff */}
@@ -480,6 +514,26 @@ const styles = StyleSheet.create({
   rowDivider: {
     height: 1,
     backgroundColor: colors.surface.floating,
+  },
+
+  // Cancellation policy card
+  policyCard: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: spacing[3],
+    backgroundColor: colors.brand[50],
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.brand[100],
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
+  },
+  policyText: {
+    fontFamily: 'Heebo_500Medium',
+    fontSize: fontSize.sm,
+    color: colors.brand[700],
+    textAlign: 'right',
+    flex: 1,
   },
 
   // Staff horizontal scroll

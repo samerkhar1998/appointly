@@ -208,6 +208,7 @@ export const salonsRouter = createTRPCRouter({
               },
             },
           },
+          settings: { select: { cancellation_window_hours: true } },
         },
       });
 
@@ -232,6 +233,7 @@ export const salonsRouter = createTRPCRouter({
         logo_url: salon.logo_url,
         cover_url: salon.cover_url,
         is_public: salon.is_public,
+        cancellation_window_hours: salon.settings?.cancellation_window_hours ?? 24,
         hours: salon.hours,
         services: salon.services,
         staff: staffList,

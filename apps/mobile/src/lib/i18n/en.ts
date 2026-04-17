@@ -104,6 +104,14 @@ export const en: Record<StringKey, string> = {
   cancel_window_suffix: 'hours before',
   cancel_resend: 'Resend Code',
   cancel_resend_in: 'Resend in',
+  cancel_appt_btn: 'Cancel Appointment',
+  cancel_appt_confirm_title: 'Cancel this appointment?',
+  cancel_appt_confirm_body: 'This action cannot be undone.',
+  cancel_appt_confirm_cta: 'Yes, Cancel',
+  cancel_appt_too_late: 'Cannot cancel less than {hours} hours before the appointment.',
+  cancel_policy_label: 'Cancellation Policy',
+  cancel_policy_value: 'Free cancellation up to {hours} hours before',
+  cancel_policy_free: 'Free cancellation anytime',
 
   // Details labels on cards
   detail_duration: 'min',
