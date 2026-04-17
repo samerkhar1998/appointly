@@ -88,7 +88,7 @@ export default function AuthWelcomeScreen() {
         style={styles.guestWrap}
         onPress={async () => {
           await loginAsGuest();
-          router.replace('/(tabs)' as never);
+          router.replace('/(tabs)/discover' as never);
         }}
         hitSlop={10}
       >

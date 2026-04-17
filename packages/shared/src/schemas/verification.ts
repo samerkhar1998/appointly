@@ -4,7 +4,8 @@ export const sendOTPSchema = z.object({
   phone: z
     .string()
     .regex(/^\+[1-9]\d{6,14}$/, 'Phone must be in E.164 format (e.g. +972501234567)'),
-  salon_id: z.string().cuid(),
+  // salon_id is optional — omit or pass undefined for customer-only login flows
+  salon_id: z.string().cuid().optional(),
 });
 
 export const verifyOTPSchema = z.object({

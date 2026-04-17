@@ -79,7 +79,9 @@ export const authRouter = createTRPCRouter({
 
     ctx.res.setHeader('Set-Cookie', buildSetCookie(token));
 
-    return { user: { id: user.id, email: user.email, name: user.name, role: user.global_role } };
+    // token is also returned in the body so mobile clients (no cookie jar) can
+    // store it in AsyncStorage and send it via Authorization header.
+    return { user: { id: user.id, email: user.email, name: user.name, role: user.global_role }, token };
   }),
 
   // Registers a new salon owner and creates their salon.
@@ -153,6 +155,7 @@ export const authRouter = createTRPCRouter({
     return {
       user: { id: user.id, email: user.email, name: user.name, role: user.global_role },
       salon: { id: salon.id, name: salon.name, slug: salon.slug },
+      token,
     };
   }),
 

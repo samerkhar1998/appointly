@@ -130,6 +130,7 @@ export const he = {
   invite_private_badge: 'עסק פרטי',
   invite_invited: 'הוזמנת אישית',
   invite_cta: 'קבע תור',
+  invite_view_business: 'צפה בעסק',
   invite_invalid_title: 'קישור לא תקף',
   invite_invalid_sub: 'קישור ההזמנה לא תקף או שפג תוקפו.',
 

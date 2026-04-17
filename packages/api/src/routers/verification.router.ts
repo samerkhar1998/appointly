@@ -23,8 +23,10 @@ export const verificationRouter = createTRPCRouter({
   // In production this triggers a Twilio WhatsApp/SMS message.
   // Returns success with the expiry window in seconds.
   sendOTP: publicProcedure.input(sendOTPSchema).mutation(async ({ input, ctx }) => {
-    // Verify salon exists
-    await ctx.db.salon.findUniqueOrThrow({ where: { id: input.salon_id } });
+    // Verify salon exists when a salon_id is provided
+    if (input.salon_id) {
+      await ctx.db.salon.findUniqueOrThrow({ where: { id: input.salon_id } });
+    }
 
     // Expire any previous active codes for this phone
     await ctx.db.phoneVerification.updateMany({
@@ -44,11 +46,10 @@ export const verificationRouter = createTRPCRouter({
       },
     });
 
-    // Load salon name for the message
-    const salon = await ctx.db.salon.findUnique({
-      where: { id: input.salon_id },
-      select: { name: true },
-    });
+    // Load salon name for the message when salon_id is available
+    const salon = input.salon_id
+      ? await ctx.db.salon.findUnique({ where: { id: input.salon_id }, select: { name: true } })
+      : null;
 
     await notificationService.sendOtp({
       to: input.phone,

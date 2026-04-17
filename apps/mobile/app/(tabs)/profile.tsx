@@ -44,7 +44,7 @@ export default function ProfileTab() {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuthStore();
 
-  const isGuest = !user;
+  const isGuest = !user || user.role === 'GUEST';
   const isOwner = user?.role === 'SALON_OWNER';
   const isCustomer = user?.role === 'CUSTOMER';
 
@@ -115,15 +115,15 @@ export default function ProfileTab() {
             <View style={styles.guestBtns}>
               <Pressable
                 style={({ pressed }) => [styles.guestBtnPrimary, pressed && { opacity: 0.9 }]}
-                onPress={() => router.push('/auth' as never)}
+                onPress={() => router.push('/auth/customer-login' as never)}
               >
-                <Text style={styles.guestBtnPrimaryText}>יצירת חשבון ←</Text>
+                <Text style={styles.guestBtnPrimaryText}>כניסה כלקוח ←</Text>
               </Pressable>
               <Pressable
                 style={({ pressed }) => [styles.guestBtnOutline, pressed && { opacity: 0.8 }]}
                 onPress={() => router.push('/auth/owner-login' as never)}
               >
-                <Text style={styles.guestBtnOutlineText}>כניסה</Text>
+                <Text style={styles.guestBtnOutlineText}>בעל עסק</Text>
               </Pressable>
             </View>
           </View>

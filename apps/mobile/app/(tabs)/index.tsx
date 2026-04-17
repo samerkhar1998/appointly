@@ -12,6 +12,7 @@ import {
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuthStore } from '@/store/auth';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -99,7 +100,7 @@ function ApptSkeleton() {
 function PhonePrompt({
   onSave,
 }: {
-  onSave: (phone: string) => void;
+  onSave: (phone: string) => Promise<void>;
 }) {
   const [phone, setPhone] = useState('');
 
@@ -183,24 +184,32 @@ function EmptyState() {
 
 export default function HomeTab() {
   const insets = useSafeAreaInsets();
+  const { user, loginAsCustomer } = useAuthStore();
   const [phone, setPhone] = useState<string | null>(null);
   const [phoneLoaded, setPhoneLoaded] = useState(false);
   const { favorites } = useFavorites();
 
-  // Load saved phone from AsyncStorage on mount
+  // Load saved phone — prefer the auth store (if already a customer) over raw AsyncStorage
   useEffect(() => {
+    if (user?.phone) {
+      setPhone(user.phone);
+      setPhoneLoaded(true);
+      return;
+    }
     AsyncStorage.getItem(PHONE_KEY)
       .then((val) => {
         setPhone(val);
         setPhoneLoaded(true);
       })
       .catch(() => setPhoneLoaded(true));
-  }, []);
+  }, [user?.phone]);
 
-  const handleSavePhone = useCallback((newPhone: string) => {
+  // Saving the phone also logs the user in as a customer so the Profile tab
+  // reflects the correct state (no more "Guest" after entering a phone here).
+  const handleSavePhone = useCallback(async (newPhone: string) => {
     setPhone(newPhone);
-    void AsyncStorage.setItem(PHONE_KEY, newPhone);
-  }, []);
+    await loginAsCustomer(newPhone, user?.name ?? '');
+  }, [loginAsCustomer, user?.name]);
 
   const { data, isLoading } = trpc.appointments.getByPhone.useQuery(
     { phone: phone ?? '' },

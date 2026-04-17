@@ -131,6 +131,7 @@ export const en: Record<StringKey, string> = {
   invite_private_badge: 'Private Business',
   invite_invited: 'You\'re personally invited',
   invite_cta: 'Book Appointment',
+  invite_view_business: 'View Business',
   invite_invalid_title: 'Invalid Link',
   invite_invalid_sub: 'The invite link is invalid or has expired.',
 

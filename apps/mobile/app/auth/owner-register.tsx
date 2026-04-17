@@ -56,8 +56,8 @@ export default function OwnerRegisterScreen() {
         phone: phone.trim() || null,
         role: 'SALON_OWNER',
       };
-      // Auth is cookie-based — token stored in httpOnly cookie by the server
-      await loginAsOwner(user, '');
+      // Store the JWT so mobile can send it via Authorization header
+      await loginAsOwner(user, result.token);
       router.replace('/(tabs)' as never);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '';

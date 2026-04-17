@@ -10,9 +10,11 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { trpc } from '@/lib/trpc';
 import { useAuthStore } from '@/store/auth';
+import type { AuthUser } from '@/store/auth';
 import { Icon } from '@/components/ui/Icon';
 import { colors, fontSize, radius, shadows, spacing } from '@/lib/theme';
 
@@ -74,14 +76,14 @@ export default function CustomerLoginScreen() {
   async function handleSendOtp() {
     setError('');
     const trimmed = phone.trim();
-    if (trimmed.length < 7) {
-      setError('נא להזין מספר טלפון תקין');
+    // Require E.164 format: must start with + followed by digits
+    if (!trimmed.startsWith('+') || trimmed.length < 8) {
+      setError('נא להזין מספר בפורמט בינלאומי: +972501234567');
       return;
     }
     try {
-      // sendOTP requires salon_id — for customer login we use a dummy/global call
-      // In practice this is phone verification independent of salon
-      await sendOtp.mutateAsync({ salon_id: 'global', phone: trimmed });
+      // salon_id is omitted — customer-login is not tied to a specific salon
+      await sendOtp.mutateAsync({ phone: trimmed });
       setStep('otp');
       startResendCountdown();
       setTimeout(() => otpRef.current?.focus(), 300);
@@ -96,6 +98,19 @@ export default function CustomerLoginScreen() {
     try {
       const result = await verifyOtp.mutateAsync({ phone: phone.trim(), code });
       setVerificationToken(result.verification_token);
+
+      // Check if this phone already has a saved name from a previous login.
+      // If so, skip the name step and log in immediately.
+      const savedRaw = await AsyncStorage.getItem('@appointly/auth_user');
+      if (savedRaw) {
+        const saved = JSON.parse(savedRaw) as AuthUser;
+        if (saved.phone === phone.trim() && saved.name && saved.name !== 'לקוח') {
+          await loginAsCustomer(phone.trim(), saved.name);
+          router.replace('/(tabs)/profile' as never);
+          return;
+        }
+      }
+
       setStep('name');
     } catch {
       setError('קוד שגוי. אנא נסה שוב.');
@@ -113,7 +128,8 @@ export default function CustomerLoginScreen() {
   async function handleFinish() {
     const trimmedName = name.trim() || 'לקוח';
     await loginAsCustomer(phone.trim(), trimmedName);
-    router.replace('/(tabs)' as never);
+    // Navigate to profile tab so the user immediately sees their logged-in state
+    router.replace('/(tabs)/profile' as never);
   }
 
   async function handleResend() {
@@ -226,6 +242,13 @@ export default function CustomerLoginScreen() {
             </Pressable>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            {/* Dev bypass hint — visible only in development builds */}
+            {__DEV__ && (
+              <View style={styles.devHint}>
+                <Text style={styles.devHintText}>🛠 מצב פיתוח — קוד OTP: 000000</Text>
+              </View>
+            )}
 
             {verifyOtp.isPending && (
               <Text style={styles.verifyingText}>מאמת...</Text>
@@ -414,6 +437,22 @@ const styles = StyleSheet.create({
     fontFamily: 'Heebo_400Regular',
     fontSize: fontSize.sm,
     color: colors.muted,
+    textAlign: 'center',
+  },
+
+  devHint: {
+    backgroundColor: '#FFF3CD',
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    borderWidth: 1,
+    borderColor: '#FBBF24',
+    alignItems: 'center',
+  },
+  devHintText: {
+    fontFamily: 'Heebo_500Medium',
+    fontSize: fontSize.xs,
+    color: '#92400E',
     textAlign: 'center',
   },
 

@@ -131,6 +131,7 @@ export const ar: Record<StringKey, string> = {
   invite_private_badge: 'عمل خاص',
   invite_invited: 'تمت دعوتك شخصيًا',
   invite_cta: 'احجز موعدًا',
+  invite_view_business: 'عرض العمل',
   invite_invalid_title: 'رابط غير صالح',
   invite_invalid_sub: 'رابط الدعوة غير صالح أو انتهت صلاحيته.',
 

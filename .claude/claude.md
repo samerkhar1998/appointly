@@ -16,6 +16,7 @@
 | 8 | Cloudinary image uploads (salon logo, staff avatars, product photos) | ✅ Done |
 | 9 | Mobile app (React Native + Expo) | ✅ Done |
 | 9b | Public/private business discovery — search homepage, invite links, My Salons page | ✅ Done |
+| 9c | Mobile auth — customer login (OTP), owner login/register, role-based tab layout | ✅ Done |
 | 10 | Test suite — happy-path tests for every tRPC procedure | 🔜 Next |
 | 11 | Tranzila payment integration — subscription billing + plan enforcement | 🔜 Next |
 | 12 | Expo Push Notifications — booking confirmations + reminders on mobile | 🔜 Next |
@@ -33,13 +34,66 @@
 | `?client=TOKEN` not handled on mobile | `apps/mobile/app/book/[slug]/index.tsx` | Web supports pre-fill + OTP skip; mobile ignores the param |
 | Reviews router/UI missing | Schema has `Review` model | No router, no dashboard UI, no post-appointment prompt |
 
+## Mobile Auth — Architecture & Rules
 
+### Roles
+- `GUEST` — chose "continue without account"; sees Discover tab by default
+- `CUSTOMER` — verified via phone OTP; sees Home/Discover/Appointments/Profile tabs
+- `SALON_OWNER` — email/password JWT; sees Calendar/Clients/Services/Profile tabs
+
+### Auth Store (`apps/mobile/src/store/auth.ts`)
+- Zustand store persisted via AsyncStorage
+- Always use `loginAsCustomer(phone, name)`, `loginAsOwner(user, token)`, `loginAsGuest()` — never write to AsyncStorage directly
+- `hydrate()` is called once on app mount in `_layout.tsx` — do not call it elsewhere
+- `loginAsCustomer` also saves the phone to `@appointly/customer_phone` so the Home tab can load appointments without a prompt
+
+### JWT on Mobile
+- The server sets an httpOnly cookie AND returns `token` in the response body
+- Mobile stores the JWT token in AsyncStorage (`@appointly/auth_token`) and sends it via `Authorization: Bearer TOKEN` header
+- The `context.ts` `getUserFromRequest` supports both cookie (web) and Bearer token (mobile) — no changes needed there
+- **Never pass `token: ''` to `loginAsOwner`** — always use `result.token` from the `auth.login` / `auth.register` response
+
+### Tab Layout (`apps/mobile/app/(tabs)/_layout.tsx`)
+- Dynamically switches between `CUSTOMER_TABS` and `OWNER_TABS` based on `user.role`
+- Hidden tabs (not in the active role's list) are registered with `tabBarButton: () => null` to prevent Expo Router 404s
+- Customer tabs (RTL order): profile → my-appointments → discover → index
+- Owner tabs (RTL order): profile → owner-services → owner-clients → owner-calendar
+- After customer login: navigate to `/(tabs)/profile`
+- After owner login: navigate to `/(tabs)/owner-calendar`
+
+### RootRedirect (`apps/mobile/app/_layout.tsx`)
+- Handles cold-start routing only (app launch)
+- Routes: no onboarding → `/onboarding`; no user → `/auth`; GUEST → `/(tabs)/discover`; OWNER → `/(tabs)/owner-calendar`; CUSTOMER → `/(tabs)/profile`
+- Do NOT add continuous redirect logic here — it competes with in-app navigation calls
+
+### OTP Bypass (development only)
+- Set `TEST_OTP_CODE=000000` in `.env` — every OTP will accept `000000`; NEVER set in production
+- Mobile shows a yellow dev hint banner (`__DEV__`) displaying the bypass code on the OTP step
+- Web booking flow shows the same hint when `NODE_ENV !== 'production'`
+
+### Icon Component (`apps/mobile/src/components/ui/Icon.tsx`)
+- Backed by `lucide-react-native` — NOT Ionicons
+- Map new icon names in `ICON_MAP` before using them; unknown names log a warning and render nothing
+- Add filled variants to `FILLED_VARIANTS` set for thicker stroke weight
+
+### Home Tab & Auth State
+- The Home tab reads the customer's phone from the auth store first (`user.phone`), falling back to AsyncStorage
+- When a user enters their phone in the Home tab prompt, `loginAsCustomer` is called — this syncs the auth store so Profile reflects the correct state
+- Never write `@appointly/customer_phone` directly from UI — always go through `loginAsCustomer`
+
+### Private Invite Flow
+- `SalonInvite` model: `token` (UUID), `salon_id`, `expires_at`
+- `salons.getInvites` — list all active invites for a salon (owner only)
+- `salons.revokeInvite` — delete an invite by ID (owner only)
+- Invite landing screen (`/invite/[token]`): two CTAs — "View Business" → `/salon/[slug]?invite=[token]`, "Book Appointment" → `/book/[slug]?invite=[token]`
+- Web settings page has an invite management panel showing active links with revoke buttons
 
 ## Stack — Always Use These, No Exceptions
 - **Framework:** Next.js 14 App Router (TypeScript, strict mode)
 - **API:** tRPC v11 + Zod (end-to-end type safety — no REST endpoints)
 - **ORM:** Prisma → PostgreSQL (Supabase)
-- **Auth:** Salon owners only — JWT via jose, stored in httpOnly cookies
+- **Auth (web):** Salon owners only — JWT via jose, stored in httpOnly cookies
+- **Auth (mobile):** JWT returned in response body, stored in AsyncStorage, sent via Bearer header
 - **Styling:** Tailwind CSS + shadcn/ui (via 21st.dev where applicable)
 - **State:** Zustand for client state, TanStack Query via tRPC for server state
 - **Email:** Resend
@@ -81,6 +135,7 @@
 - All shadcn/ui components must be verified RTL-compatible before use
 - Use `next-intl` for i18n — support Hebrew (he), Arabic (ar), English (en)
 - Translation files live in `/apps/web/messages/[locale].json`
+- Mobile i18n: string catalogues in `apps/mobile/src/lib/i18n/` (he.ts is the master locale; en.ts and ar.ts must have the same keys)
 - Never hardcode user-facing strings — always use `t('key')`
 - Font for Hebrew/Arabic: **Heebo** (Google Fonts) — clean, widely used, great RTL support
 - Font for English display: pair with a distinctive Latin display font
@@ -91,6 +146,7 @@
 - Use `publicProcedure` for booking pages, OTP, availability, cancel by token
 - Never call Prisma directly from components — always through tRPC
 - Error messages must be user-facing safe (no raw DB errors leaked)
+- `salon_id` on `sendOTPSchema` is optional — customer-only flows (e.g. mobile login) omit it
 - Routers: `auth`, `salons`, `salonSettings`, `staff`, `services`, `availability`,
   `appointments`, `salonClients`, `orders`, `products`, `promoCodes`, `analytics`, `verification`
 
@@ -147,36 +203,49 @@
 ## Security Rules
 - Never expose internal IDs in URLs — use slugs or opaque tokens
 - `cancel_token` and `client_token`: always UUID v4, single-use, checked server-side
-- OTP codes: bcrypt-hashed in DB — never stored in plain text
-- Rate limit: OTP send = 3/hour per phone, OTP verify = 3 attempts then 10min lockout
+- OTP codes: HMAC-SHA256 hashed in DB — never stored in plain text
+- Rate limit: OTP send = 3/hour per phone, OTP verify = 5 attempts then expire
 - All Prisma queries in public procedures must explicitly scope to `salon_id`
 - Never return password hashes, tokens, or internal metadata to the client
+- JWT returned in auth response body is safe — it is the same token set as the cookie
 
 ## Environment Variables — Always Required
 
-Database
+```
+# Database
 DATABASE_URL=
-Auth
+
+# Auth
 JWT_SECRET=
 JWT_EXPIRES_IN=7d
-Twilio (WhatsApp + SMS)
+
+# Twilio (WhatsApp + SMS)
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_WHATSAPP_FROM=
 TWILIO_SMS_FROM=
-Cloudinary
+
+# Cloudinary
 CLOUDINARY_CLOUD_NAME=
 CLOUDINARY_API_KEY=
 CLOUDINARY_API_SECRET=
-Resend (email)
+
+# Resend (email)
 RESEND_API_KEY=
-Redis (Upstash)
+
+# Redis (Upstash)
 UPSTASH_REDIS_REST_URL=
 UPSTASH_REDIS_REST_TOKEN=
-App
+
+# App
 NEXT_PUBLIC_APP_URL=
-Testing (optional — dev/test only)
-TEST_OTP_CODE=   ← when set, every OTP uses this fixed code instead of a random one (e.g. "000000"); NEVER set in production
+
+# Mobile (Expo)
+EXPO_PUBLIC_API_URL=   ← set to your local machine IP for device/emulator testing (e.g. http://192.168.1.x:3000)
+
+# Testing (optional — dev/test only)
+TEST_OTP_CODE=         ← when set, every OTP accepts this fixed code (e.g. "000000"); NEVER set in production
+```
 
 ## What Claude Should Always Do
 - Read the `frontend-design` skill before any UI work
@@ -195,3 +264,5 @@ TEST_OTP_CODE=   ← when set, every OTP uses this fixed code instead of a rando
 - Never write a raw `fetch()` to the backend from a component — use tRPC client
 - Never use `left`/`right` CSS properties — use `start`/`end` for RTL safety
 - Never create a new UI component when a shadcn/ui equivalent exists
+- Never write directly to `@appointly/customer_phone` AsyncStorage key — always use `loginAsCustomer()`
+- Never pass `token: ''` to `loginAsOwner` — always use the token returned from `auth.login` / `auth.register`

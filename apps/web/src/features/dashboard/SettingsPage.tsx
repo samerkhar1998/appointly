@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, MessageCircle, Clock, Settings2, Store, Globe, Lock, Copy, Check, Link as LinkIcon } from 'lucide-react';
+import { Loader2, MessageCircle, Clock, Settings2, Store, Globe, Lock, Copy, Check, Link as LinkIcon, Trash2 } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { useSalon } from '@/lib/use-salon';
 import { ImageUpload } from '@/components/ui/image-upload';
@@ -273,10 +273,24 @@ export function SettingsPage() {
     onError: (err) => toast({ title: 'שגיאה', description: err.message, variant: 'destructive' }),
   });
 
+  const { data: activeInvites, refetch: refetchInvites } = trpc.salons.getInvites.useQuery(
+    { salon_id: salon?.id ?? '' },
+    { enabled: !!salon?.id },
+  );
+
   const createInviteMutation = trpc.salons.createInvite.useMutation({
     onSuccess: (data) => {
       const link = `${appUrl}/invite/${data.token}`;
       setInviteLink(link);
+      void refetchInvites();
+    },
+    onError: (err) => toast({ title: 'שגיאה', description: err.message, variant: 'destructive' }),
+  });
+
+  const revokeInviteMutation = trpc.salons.revokeInvite.useMutation({
+    onSuccess: () => {
+      void refetchInvites();
+      toast({ title: 'קישור בוטל' });
     },
     onError: (err) => toast({ title: 'שגיאה', description: err.message, variant: 'destructive' }),
   });
@@ -665,6 +679,47 @@ export function SettingsPage() {
               {inviteLink ? 'צור קישור חדש' : 'צור קישור הזמנה'}
             </Button>
           </div>
+
+          {/* Active invite links management */}
+          {activeInvites && activeInvites.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-foreground">קישורי הזמנה פעילים</p>
+              <div className="space-y-1.5">
+                {activeInvites.map((invite) => {
+                  const link = `${appUrl}/invite/${invite.token}`;
+                  const isExpired = invite.expires_at && new Date(invite.expires_at) < new Date();
+                  return (
+                    <div
+                      key={invite.id}
+                      className={`flex items-center gap-2 rounded-xl border px-3 py-2 ${isExpired ? 'border-border bg-surface-elevated opacity-60' : 'border-border bg-surface-elevated'}`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-muted truncate" dir="ltr">{link}</p>
+                        {invite.expires_at && (
+                          <p className="text-xs text-muted mt-0.5">
+                            {isExpired ? '⚠ פג תוקף' : `פג תוקף: ${new Intl.DateTimeFormat('he-IL').format(new Date(invite.expires_at))}`}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 p-0 text-danger hover:bg-danger/10 shrink-0"
+                        disabled={revokeInviteMutation.isPending}
+                        onClick={() =>
+                          salon?.id &&
+                          revokeInviteMutation.mutate({ salon_id: salon.id, invite_id: invite.id })
+                        }
+                        title="בטל קישור"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </Section>
 
