@@ -17,14 +17,18 @@ interface StaffMember {
 
 interface Props {
   salonId: string;
+  serviceId?: string;
   onSelect: (staff: StaffMember | null) => void;
   onBack: () => void;
   /** When true, auto-skips this step if only 1 bookable staff exists */
   autoSkipSingle?: boolean;
 }
 
-export function StepStaff({ salonId, onSelect, onBack, autoSkipSingle = true }: Props) {
-  const { data, isLoading, isError } = trpc.staff.list.useQuery({ salon_id: salonId });
+export function StepStaff({ salonId, serviceId, onSelect, onBack, autoSkipSingle = true }: Props) {
+  const { data, isLoading, isError } = trpc.staff.list.useQuery({
+    salon_id: salonId,
+    ...(serviceId ? { service_id: serviceId } : {}),
+  });
 
   // Auto-skip when only 1 bookable staff member — no choice to make
   useEffect(() => {

@@ -264,6 +264,8 @@ model Staff {
   schedules     StaffSchedule[]
   blocked_times StaffBlockedTime[]
   appointments  Appointment[]
+  // Empty = can perform all services. Non-empty = restricted to listed services only.
+  services      StaffService[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -301,6 +303,26 @@ model StaffBlockedTime {
   start_datetime DateTime
   end_datetime   DateTime
   reason         String?
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// StaffService — which services a staff member is qualified to perform.
+// Empty set means the staff member can perform all salon services.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model StaffService {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+
+  staff_id   String
+  staff      Staff   @relation(fields: [staff_id], references: [id], onDelete: Cascade)
+
+  service_id String
+  service    Service @relation(fields: [service_id], references: [id], onDelete: Cascade)
+
+  @@unique([staff_id, service_id])
+  @@index([staff_id])
+  @@index([service_id])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -348,6 +370,7 @@ model Service {
 
   appointments Appointment[]
   promo_free_service PromoCode[] @relation("FreeService")
+  staff        StaffService[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

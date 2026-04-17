@@ -235,6 +235,7 @@ export function BookingFlow({
         {step === 'staff' && (
           <StepStaff
             salonId={salonId}
+            serviceId={booking.service_id ?? undefined}
             onSelect={(staff) =>
               advance({
                 staff_id: staff?.id ?? null,

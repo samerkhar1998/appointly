@@ -17,6 +17,8 @@
 | 9 | Mobile app (React Native + Expo) | ✅ Done |
 | 9b | Public/private business discovery — search homepage, invite links, My Salons page | ✅ Done |
 | 9c | Mobile auth — customer login (OTP), owner login/register, role-based tab layout | ✅ Done |
+| 9d | CustomerProfile — persistent customer identity; name stored after first OTP; pre-fill booking details; OTP skip for known customers | ✅ Done |
+| 9e | In-app appointment cancellation — cancel from My Appointments tab; owner-configured window; cancellation policy on salon profile | ✅ Done |
 | 10 | Test suite — happy-path tests for every tRPC procedure | 🔜 Next |
 | 11 | Tranzila payment integration — subscription billing + plan enforcement | 🔜 Next |
 | 12 | Expo Push Notifications — booking confirmations + reminders on mobile | 🔜 Next |
@@ -33,6 +35,7 @@
 | Mobile push notifications | `apps/mobile` | Expo Notifications not set up; customers get no native push alerts |
 | `?client=TOKEN` not handled on mobile | `apps/mobile/app/book/[slug]/index.tsx` | Web supports pre-fill + OTP skip; mobile ignores the param |
 | Reviews router/UI missing | Schema has `Review` model | No router, no dashboard UI, no post-appointment prompt |
+| Owner cancellation approval flow missing | `appointments.router.ts` | Cancellations outside the window should require owner approval; currently not implemented |
 
 ## Mobile Auth — Architecture & Rules
 
@@ -68,6 +71,8 @@
 
 ### OTP Bypass (development only)
 - Set `TEST_OTP_CODE=000000` in `.env` — every OTP will accept `000000`; NEVER set in production
+- Server uses `TEST_OTP_CODE ?? '000000'` in non-production; value is blocked entirely in production
+- Mobile client reads `EXPO_PUBLIC_TEST_OTP_CODE` for the hint banner; web reads `NEXT_PUBLIC_TEST_OTP_CODE`
 - Mobile shows a yellow dev hint banner (`__DEV__`) displaying the bypass code on the OTP step
 - Web booking flow shows the same hint when `NODE_ENV !== 'production'`
 
@@ -80,6 +85,27 @@
 - The Home tab reads the customer's phone from the auth store first (`user.phone`), falling back to AsyncStorage
 - When a user enters their phone in the Home tab prompt, `loginAsCustomer` is called — this syncs the auth store so Profile reflects the correct state
 - Never write `@appointly/customer_phone` directly from UI — always go through `loginAsCustomer`
+
+### CustomerProfile — Persistent Customer Identity
+- Model: `CustomerProfile` (keyed by `phone`, unique index)
+- Created/updated after first successful OTP verification via `verification.setCustomerName`
+- `verification.verifyOTP` returns `customer_name: string | null` — if non-null, skip the name step
+- `verification.issueTokenForKnownCustomer` — issues a pre-verified `PhoneVerification` token for customers with an existing `CustomerProfile`; used by the booking flow to skip OTP entirely
+- Never re-prompt for name if `CustomerProfile` exists — check on every OTP login
+
+### Booking Flow — Logged-In Customer
+- When `user.role === 'CUSTOMER'` and `user.phone` is set, the Details step pre-fills name and phone from the auth store
+- Phone field is non-editable for logged-in customers
+- `onSubmit` calls `issueTokenForKnownCustomer` → stores `verification_token` → navigates directly to Confirmation (skips OTP screen)
+- If `issueTokenForKnownCustomer` fails (network error etc.), fall back to the standard OTP screen
+
+### In-App Appointment Cancellation
+- `appointments.cancelByPhone` — public procedure; validates `CustomerProfile` exists for phone, appointment belongs to that phone, enforces `cancellation_window_hours`, then cancels
+- `appointments.getByPhone` returns `cancel_token` (null if already used) and `cancellation_window_hours` per appointment
+- `salons.getPublicProfile` returns `cancellation_window_hours` from `SalonSettings` (default 24)
+- My Appointments tab: cancel button calls `cancelByPhone` for logged-in customers; navigates to `/cancel/[token]` for guests
+- Cancellation policy section shown on salon profile page using `cancel_policy_label` / `cancel_policy_value` / `cancel_policy_free` i18n keys
+- `SalonSettings.cancellation_window_hours = 0` means free cancellation at any time
 
 ### Private Invite Flow
 - `SalonInvite` model: `token` (UUID), `salon_id`, `expires_at`
@@ -241,10 +267,12 @@ UPSTASH_REDIS_REST_TOKEN=
 NEXT_PUBLIC_APP_URL=
 
 # Mobile (Expo)
-EXPO_PUBLIC_API_URL=   ← set to your local machine IP for device/emulator testing (e.g. http://192.168.1.x:3000)
+EXPO_PUBLIC_API_URL=              ← set to your local machine IP for device/emulator testing (e.g. http://192.168.1.x:3000)
 
 # Testing (optional — dev/test only)
-TEST_OTP_CODE=         ← when set, every OTP accepts this fixed code (e.g. "000000"); NEVER set in production
+TEST_OTP_CODE=                    ← when set, every OTP accepts this fixed code (e.g. "000000"); NEVER set in production
+EXPO_PUBLIC_TEST_OTP_CODE=        ← mirrors TEST_OTP_CODE for mobile OTP hint display only
+NEXT_PUBLIC_TEST_OTP_CODE=        ← mirrors TEST_OTP_CODE for web OTP hint display only
 ```
 
 ## What Claude Should Always Do
