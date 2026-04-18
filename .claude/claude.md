@@ -37,6 +37,25 @@
 | Reviews router/UI missing | Schema has `Review` model | No router, no dashboard UI, no post-appointment prompt |
 | Owner cancellation approval flow missing | `appointments.router.ts` | Cancellations outside the window should require owner approval; currently not implemented |
 
+## Concurrency & Race Condition Rules
+
+### Booking — per-staff mutex (`appointments.create`)
+- The `create` procedure holds a `SELECT ... FOR UPDATE` row-level lock on the `Staff` row for the duration of the booking transaction
+- This serialises concurrent booking requests for the same staff member at the database level — no two bookings for the same staff member can run the conflict check simultaneously
+- The conflict check, verification-token invalidation, client upsert, and `appointment.create` all happen inside that single locked transaction
+- **Never move the conflict check outside the transaction** — doing so re-introduces the TOCTOU race
+
+### Cancellation — atomic conditional update
+- All cancel procedures (`cancelByToken`, `cancelByPhone`, `cancelByOTP`) use `updateMany` with `status: { not: 'CANCELLED' }` in the WHERE clause instead of a separate read + update
+- If `result.count === 0` after the update, the appointment was already cancelled by a concurrent request → throw `BAD_REQUEST`
+- **Never use `findFirst` then `update` for cancellation** — the gap between them allows double-cancellation
+
+### Client-side CONFLICT handling
+- When `appointments.create` returns `CONFLICT`, the booking flow must navigate the user back to the datetime step and show a toast — never show a generic error screen for this code
+- Web: `StepConfirmation` calls `onSlotTaken()` on `err.data?.code === 'CONFLICT'`; `BookingFlow.handleSlotTaken` clears `start_datetime`/`staff_id` and sets step to `'datetime'`
+- Mobile: `confirmation.tsx` navigates to `/book/[slug]/datetime` on `CONFLICT`
+- i18n keys for the "slot taken" message: `slot_taken_title`, `slot_taken_body`, `slot_taken_cta` (present in he/en/ar)
+
 ## Mobile Auth — Architecture & Rules
 
 ### Roles
@@ -183,6 +202,8 @@
 - Soft deletes preferred — add `deleted_at` rather than hard deleting client data
 - Every query that touches appointments must scope by `salon_id` — never query globally
 - Use Prisma transactions for any operation that touches 2+ tables atomically
+- For mutations with a read-then-write pattern on the same row, use `SELECT ... FOR UPDATE` (via `tx.$queryRaw`) inside the transaction to prevent TOCTOU races
+- Prefer `updateMany` with a conditional WHERE over `findFirst` + `update` when atomicity matters (e.g. status-guarded cancellations)
 
 ## Availability Engine — Core Algorithm Rules
 - Never pre-generate slots — calculate dynamically from intervals
