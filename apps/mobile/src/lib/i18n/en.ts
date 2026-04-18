@@ -84,6 +84,9 @@ export const en: Record<StringKey, string> = {
   confirmation_book_another: 'Book Another',
   confirmation_go_home: 'Go Home',
   confirmation_error: 'Could not save your appointment. Please try again.',
+  slot_taken_title: 'Slot no longer available',
+  slot_taken_body: 'Someone else just booked this time. Please choose a different slot.',
+  slot_taken_cta: 'Choose another time',
 
   // Cancel page
   cancel_loading: 'Loading appointment details...',

@@ -84,6 +84,9 @@ export const ar: Record<StringKey, string> = {
   confirmation_book_another: 'احجز موعدًا آخر',
   confirmation_go_home: 'العودة للرئيسية',
   confirmation_error: 'تعذر حفظ الموعد. يرجى المحاولة مرة أخرى.',
+  slot_taken_title: 'الموعد لم يعد متاحًا',
+  slot_taken_body: 'قام شخص آخر بحجز هذا الوقت. يرجى اختيار موعد آخر.',
+  slot_taken_cta: 'اختر وقتًا آخر',
 
   // Cancel page
   cancel_loading: 'جاري تحميل تفاصيل الموعد...',

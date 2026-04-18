@@ -8,6 +8,7 @@ import { StepDetails } from './steps/StepDetails';
 import { StepOTP } from './steps/StepOTP';
 import { StepConfirmation } from './steps/StepConfirmation';
 import { trpc } from '@/lib/trpc';
+import { toast } from '@/lib/use-toast';
 import { Scissors } from 'lucide-react';
 
 const CUSTOMER_STORAGE_KEY = 'appointly:customer';
@@ -131,6 +132,19 @@ export function BookingFlow({
   function back() {
     const prev = STEPS[currentStepIndex - 1];
     if (prev) setStep(prev);
+  }
+
+  // Called when the server returns CONFLICT on appointment creation.
+  // Clears the selected slot and sends the user back to pick a new time,
+  // showing a toast so they understand why they were redirected.
+  function handleSlotTaken() {
+    setBooking((prev) => ({ ...prev, start_datetime: '', staff_id: null }));
+    setStep('datetime');
+    toast({
+      title: 'המועד שבחרת כבר תפוס',
+      description: 'לקוח אחר קבע את אותו התור. אנא בחר מועד אחר.',
+      variant: 'destructive',
+    });
   }
 
   // If client token is present, skip OTP when we reach that step.
@@ -280,6 +294,7 @@ export function BookingFlow({
           <StepConfirmation
             booking={booking as BookingState}
             salonTimezone={salonTimezone}
+            onSlotTaken={handleSlotTaken}
           />
         )}
       </div>

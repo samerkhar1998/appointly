@@ -30,6 +30,13 @@ export default function ConfirmationScreen() {
     onSuccess: (data: { appointment_id: string; cancel_token: string }) => {
       setBooking({ appointment_id: data.appointment_id, cancel_token: data.cancel_token });
     },
+    onError: (err) => {
+      // CONFLICT means a concurrent request booked the same slot first.
+      // Navigate back to datetime selection so the user can pick a free slot.
+      if (err.data?.code === 'CONFLICT') {
+        router.replace(`/book/${slug}/datetime` as never);
+      }
+    },
   });
 
   useEffect(() => {
@@ -65,14 +72,26 @@ export default function ConfirmationScreen() {
   }
 
   if (createAppt.isError) {
+    const isSlotTaken = createAppt.error.data?.code === 'CONFLICT';
     return (
       <View style={[styles.loadingCenter, { padding: spacing[6] }]}>
         <View style={styles.errorCard}>
-          <Text style={styles.errorEmoji}>❌</Text>
-          <Text style={styles.errorTitle}>{t('confirmation_error')}</Text>
-          <Text style={styles.errorBody}>{createAppt.error.message}</Text>
-          <Button onPress={() => router.replace(`/book/${slug}`)} style={styles.retryBtn}>
-            {t('retry')}
+          <Text style={styles.errorEmoji}>{isSlotTaken ? '🗓️' : '❌'}</Text>
+          <Text style={styles.errorTitle}>
+            {isSlotTaken ? t('slot_taken_title') : t('confirmation_error')}
+          </Text>
+          <Text style={styles.errorBody}>
+            {isSlotTaken ? t('slot_taken_body') : createAppt.error.message}
+          </Text>
+          <Button
+            onPress={() =>
+              isSlotTaken
+                ? router.replace(`/book/${slug}/datetime` as never)
+                : router.replace(`/book/${slug}` as never)
+            }
+            style={styles.retryBtn}
+          >
+            {isSlotTaken ? t('slot_taken_cta') : t('retry')}
           </Button>
         </View>
       </View>

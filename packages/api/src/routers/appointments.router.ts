@@ -18,12 +18,14 @@ function hashCancelOtp(code: string, phone: string): string {
 
 export const appointmentsRouter = createTRPCRouter({
   // Creates a new appointment booking.
-  // Validates the OTP verification token, checks for slot conflicts,
-  // upserts the salon client, then persists the appointment.
-  // If the salon's confirmation mode is AUTO, immediately confirms the appointment.
+  // Validates the OTP verification token, then acquires a row-level lock on the
+  // staff record so that concurrent requests for the same staff member are
+  // serialised. The conflict check, client upsert, and appointment insert all
+  // happen inside that locked transaction, making it impossible for two overlapping
+  // bookings to both succeed.
   // Returns the appointment ID and cancel token.
   create: publicProcedure.input(createBookingSchema).mutation(async ({ input, ctx }) => {
-    // 1. Validate verification token
+    // 1. Validate verification token (outside the booking transaction — fast check)
     const verification = await ctx.db.phoneVerification.findFirst({
       where: {
         verification_token: input.verification_token,
@@ -62,23 +64,7 @@ export const appointmentsRouter = createTRPCRouter({
     const start = new Date(input.start_datetime);
     const end = new Date(start.getTime() + service.duration_mins * 60_000);
 
-    // 4. Double-check no conflict
-    const conflict = await ctx.db.appointment.findFirst({
-      where: {
-        staff_id: staffId,
-        status: { in: ['PENDING', 'CONFIRMED'] },
-        start_datetime: { lt: end },
-        end_datetime: { gt: start },
-      },
-    });
-    if (conflict) {
-      throw new TRPCError({
-        code: 'CONFLICT',
-        message: 'This time slot is no longer available',
-      });
-    }
-
-    // 5. Load salon settings to determine confirmation mode
+    // 4. Load salon settings (outside the transaction — read-only, no contention)
     const salon = await ctx.db.salon.findUniqueOrThrow({
       where: { id: service.salon_id },
       include: { settings: true },
@@ -86,49 +72,75 @@ export const appointmentsRouter = createTRPCRouter({
 
     const isAutoConfirm = salon.settings?.confirmation_mode === 'AUTO';
 
-    // 6. Upsert salon client
-    const salonClient = await ctx.db.salonClient.upsert({
-      where: { salon_id_phone: { salon_id: salon.id, phone: input.customer_phone } },
-      update: { name: input.customer_name, email: input.customer_email },
-      create: {
-        salon_id: salon.id,
-        name: input.customer_name,
-        phone: input.customer_phone,
-        email: input.customer_email,
-      },
+    // 5. Acquire a per-staff mutex via SELECT FOR UPDATE, then atomically:
+    //    • re-check for slot conflicts (now guaranteed to see all committed rows)
+    //    • mark the verification token as used
+    //    • upsert the salon client
+    //    • create the appointment
+    //
+    // Concurrent requests for the same staff member queue at the FOR UPDATE lock.
+    // The second request will re-check after the first commits and see the conflict.
+    const appointment = await ctx.db.$transaction(async (tx) => {
+      // Lock the staff row — only one booking per staff can proceed at a time.
+      await tx.$queryRaw`SELECT id FROM "Staff" WHERE id = ${staffId} FOR UPDATE`;
+
+      // Conflict check is now race-free.
+      const conflict = await tx.appointment.findFirst({
+        where: {
+          staff_id: staffId,
+          status: { in: ['PENDING', 'CONFIRMED'] },
+          start_datetime: { lt: end },
+          end_datetime: { gt: start },
+        },
+      });
+      if (conflict) {
+        throw new TRPCError({
+          code: 'CONFLICT',
+          message: 'This time slot is no longer available',
+        });
+      }
+
+      // Mark token as used so it cannot be replayed.
+      await tx.phoneVerification.update({
+        where: { id: verification.id },
+        data: { token_used: true },
+      });
+
+      const salonClient = await tx.salonClient.upsert({
+        where: { salon_id_phone: { salon_id: salon.id, phone: input.customer_phone } },
+        update: { name: input.customer_name, email: input.customer_email },
+        create: {
+          salon_id: salon.id,
+          name: input.customer_name,
+          phone: input.customer_phone,
+          email: input.customer_email,
+        },
+      });
+
+      return tx.appointment.create({
+        data: {
+          salon_id: salon.id,
+          staff_id: staffId,
+          service_id: input.service_id,
+          salon_client_id: salonClient.id,
+          customer_name: input.customer_name,
+          customer_phone: input.customer_phone,
+          customer_email: input.customer_email,
+          start_datetime: start,
+          end_datetime: end,
+          status: isAutoConfirm ? 'CONFIRMED' : 'PENDING',
+        },
+        include: { staff: true },
+      });
     });
 
-    // 7. Create appointment (and optionally confirm in the same transaction)
-    const appointment = await ctx.db.appointment.create({
-      data: {
-        salon_id: salon.id,
-        staff_id: staffId,
-        service_id: input.service_id,
-        salon_client_id: salonClient.id,
-        customer_name: input.customer_name,
-        customer_phone: input.customer_phone,
-        customer_email: input.customer_email,
-        start_datetime: start,
-        end_datetime: end,
-        status: isAutoConfirm ? 'CONFIRMED' : 'PENDING',
-      },
-      include: { staff: true },
-    });
-
-    // 8. Mark verification token as used
-    await ctx.db.phoneVerification.update({
-      where: { id: verification.id },
-      data: { token_used: true },
-    });
-
-    // 9. Send WhatsApp confirmation + schedule reminder jobs (non-blocking)
+    // 6. Send WhatsApp confirmation + schedule reminder jobs (non-blocking)
     void sendConfirmationNotification({ appointment, service, salon }).catch((err: unknown) => {
       // eslint-disable-next-line no-console
       console.error('[notifications] confirmation failed:', err);
     });
 
     if (isAutoConfirm) {
-      // Schedule reminders only for confirmed appointments
       void scheduleReminders(appointment.id, appointment.start_datetime).catch((err: unknown) => {
         // eslint-disable-next-line no-console
         console.error('[queue] scheduleReminders failed:', err);
@@ -267,6 +279,8 @@ export const appointmentsRouter = createTRPCRouter({
 
   // Cancels an appointment using a single-use magic-link token.
   // Enforces the salon's cancellation window policy.
+  // The final update uses a conditional WHERE on status so that two simultaneous
+  // requests can never both succeed — only one UPDATE will match and commit.
   cancelByToken: publicProcedure
     .input(cancelByTokenSchema)
     .mutation(async ({ input, ctx }) => {
@@ -295,14 +309,16 @@ export const appointmentsRouter = createTRPCRouter({
         });
       }
 
-      await ctx.db.appointment.update({
-        where: { id: appointment.id },
-        data: {
-          status: 'CANCELLED',
-          cancelled_by: 'CUSTOMER',
-          cancel_token_used: true,
-        },
+      // Atomic conditional update — only succeeds if status is still non-cancelled.
+      // Guards against two simultaneous cancel requests both proceeding.
+      const result = await ctx.db.appointment.updateMany({
+        where: { id: appointment.id, status: { not: 'CANCELLED' } },
+        data: { status: 'CANCELLED', cancelled_by: 'CUSTOMER', cancel_token_used: true },
       });
+
+      if (result.count === 0) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Appointment already cancelled' });
+      }
 
       void cancelReminders(appointment.id).catch((err: unknown) => {
         // eslint-disable-next-line no-console
@@ -415,9 +431,10 @@ export const appointmentsRouter = createTRPCRouter({
         });
       }
 
-      await ctx.db.$transaction([
-        ctx.db.appointment.update({
-          where: { id: appointment.id },
+      // Atomic conditional update — only succeeds if status is still non-cancelled.
+      const [cancelResult] = await ctx.db.$transaction([
+        ctx.db.appointment.updateMany({
+          where: { id: appointment.id, status: { not: 'CANCELLED' } },
           data: { status: 'CANCELLED', cancelled_by: 'CUSTOMER' },
         }),
         ctx.db.phoneVerification.update({
@@ -425,6 +442,10 @@ export const appointmentsRouter = createTRPCRouter({
           data: { verified: true },
         }),
       ]);
+
+      if (cancelResult.count === 0) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Appointment already cancelled' });
+      }
 
       void cancelReminders(appointment.id).catch((err: unknown) => {
         // eslint-disable-next-line no-console
@@ -548,10 +569,15 @@ export const appointmentsRouter = createTRPCRouter({
         });
       }
 
-      await ctx.db.appointment.update({
-        where: { id: appointment.id },
+      // Atomic conditional update — only succeeds if status is still non-cancelled.
+      const result = await ctx.db.appointment.updateMany({
+        where: { id: appointment.id, status: { not: 'CANCELLED' } },
         data: { status: 'CANCELLED', cancelled_by: 'CUSTOMER', cancel_token_used: true },
       });
+
+      if (result.count === 0) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Appointment already cancelled' });
+      }
 
       void cancelReminders(appointment.id).catch((err: unknown) => {
         // eslint-disable-next-line no-console

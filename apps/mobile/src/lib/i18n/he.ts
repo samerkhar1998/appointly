@@ -83,6 +83,9 @@ export const he = {
   confirmation_book_another: 'קבע תור נוסף',
   confirmation_go_home: 'חזרה לדף הבית',
   confirmation_error: 'לא ניתן לשמור את התור. אנא נסה שוב.',
+  slot_taken_title: 'המועד כבר תפוס',
+  slot_taken_body: 'לקוח אחר קבע את אותו התור. אנא בחר מועד אחר.',
+  slot_taken_cta: 'בחר מועד אחר',
 
   // Cancel page
   cancel_loading: 'טוען פרטי תור...',

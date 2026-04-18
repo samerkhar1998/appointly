@@ -11,6 +11,9 @@ import type { BookingState } from '../BookingFlow';
 interface Props {
   booking: BookingState;
   salonTimezone: string;
+  // Called when the server rejects the booking because the slot was taken by
+  // a concurrent request. The flow should navigate back to datetime selection.
+  onSlotTaken: () => void;
 }
 
 function formatLocalDateTime(isoUtc: string, timezone: string) {
@@ -30,8 +33,16 @@ function formatLocalDateTime(isoUtc: string, timezone: string) {
   };
 }
 
-export function StepConfirmation({ booking, salonTimezone }: Props) {
-  const createMutation = trpc.appointments.create.useMutation();
+export function StepConfirmation({ booking, salonTimezone, onSlotTaken }: Props) {
+  const createMutation = trpc.appointments.create.useMutation({
+    onError: (err) => {
+      // A CONFLICT means someone else booked this slot between the user selecting
+      // it and submitting. Send them back to pick a fresh time.
+      if (err.data?.code === 'CONFLICT') {
+        onSlotTaken();
+      }
+    },
+  });
 
   useEffect(() => {
     createMutation.mutate({
