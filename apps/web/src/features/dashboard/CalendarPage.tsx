@@ -10,6 +10,7 @@ import heLocale from '@fullcalendar/core/locales/he';
 import { ChevronLeft, ChevronRight, Clock, Scissors, User } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { useSalon } from '@/lib/use-salon';
+import { useAppointmentEvents } from '@/lib/use-appointment-events';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -252,6 +253,12 @@ export function CalendarPage() {
     },
     { enabled: !!salon?.id && !!dateRange },
   );
+
+  // Invalidate all listForCalendar queries (covers both MobileDayView and FullCalendar)
+  // whenever an appointment is inserted or updated for this salon.
+  useAppointmentEvents(salon?.id ?? '', () => {
+    void utils.appointments.listForCalendar.invalidate();
+  });
 
   const updateStatusMutation = trpc.appointments.updateStatus.useMutation({
     onSuccess: () => {
