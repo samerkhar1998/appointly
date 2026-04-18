@@ -1,5 +1,6 @@
+import { Fragment } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, fontSize, radius, spacing } from '@/lib/theme';
+import { colors, fontSize, radius, shadows, spacing } from '@/lib/theme';
 import { t } from '@/lib/strings';
 
 const STEPS = [
@@ -11,58 +12,71 @@ const STEPS = [
 ] as const;
 
 interface Props {
-  /** 0-based current step index (confirmation step is not shown) */
+  /** 0-based current step index (confirmation is not shown in the bar) */
   currentStep: number;
 }
 
+// Renders the booking-flow step progress bar.
+// Uses row-reverse so step 0 sits on the right (RTL reading start) and
+// step 4 on the left. Each step renders as a column: dot on top, label below.
+// Connector lines are interleaved between step columns and aligned to dot centre.
+// currentStep: 0-based index of the active step.
 export function BookingProgress({ currentStep }: Props) {
   const totalSteps = STEPS.length;
-  // Progress expressed as a percentage of the bar width
-  const progressPct = ((currentStep + 1) / totalSteps) * 100;
-
-  const currentLabel = STEPS[currentStep] ?? '';
-  const nextLabel = currentStep < totalSteps - 1 ? STEPS[currentStep + 1] : null;
 
   return (
-    <View style={styles.container}>
-      {/* Step info row — right-aligned labels, counter on left */}
-      <View style={styles.infoRow}>
-        {/* Step counter on the left (end in RTL) */}
-        <Text style={styles.stepCounter}>
-          {currentStep + 1} / {totalSteps}
-        </Text>
-
-        {/* Current & next step labels, right-aligned */}
-        <View style={styles.stepNames}>
-          <Text style={styles.currentStep}>{currentLabel}</Text>
-          {nextLabel ? (
-            <Text style={styles.nextStep}>{nextLabel} ←</Text>
-          ) : null}
-        </View>
-      </View>
-
-      {/* Progress bar — fills from RIGHT to LEFT for RTL */}
+    <View style={styles.wrapper}>
+      {/*
+        Track — row-reverse so index 0 appears on the RIGHT.
+        Items alternate: [stepCol] [line] [stepCol] [line] … [stepCol]
+        alignItems: 'flex-start' lets the line use marginTop to align with the dot centre.
+      */}
       <View style={styles.track}>
-        {/* Fill anchored to the right edge, grows leftward */}
-        <View style={[styles.fill, { width: `${progressPct}%` as unknown as number }]} />
-
-        {/* Step markers — positioned from the right edge */}
-        {STEPS.map((_, i) => {
+        {STEPS.map((label, i) => {
           const isDone = i < currentStep;
           const isActive = i === currentStep;
-          // Distance from the RIGHT edge: step 0 is 80% from right (= 20% from left in 5-step)
-          // Each step marker sits at its own "fill boundary" from the right
-          const posFromRight = ((totalSteps - (i + 1)) / totalSteps) * 100;
+          const isLast = i === totalSteps - 1;
+
           return (
-            <View
-              key={i}
-              style={[
-                styles.marker,
-                { right: `${posFromRight}%` as unknown as number },
-                isDone && styles.markerDone,
-                isActive && styles.markerActive,
-              ]}
-            />
+            <Fragment key={i}>
+              {/* ── Step column: dot + label ── */}
+              <View style={styles.stepCol}>
+                <View
+                  style={[
+                    styles.dot,
+                    isDone && styles.dotDone,
+                    isActive && styles.dotActive,
+                  ]}
+                >
+                  {isDone ? (
+                    <Text style={styles.checkmark}>✓</Text>
+                  ) : (
+                    <Text style={[styles.dotNumber, isActive && styles.dotNumberActive]}>
+                      {i + 1}
+                    </Text>
+                  )}
+                </View>
+
+                {/*
+                  Label — always occupies one line of height to keep dots vertically aligned.
+                  Only the active step renders visible text.
+                */}
+                <Text
+                  style={[styles.stepLabel, isActive && styles.stepLabelActive]}
+                  numberOfLines={1}
+                >
+                  {isActive ? label : ''}
+                </Text>
+              </View>
+
+              {/* ── Connector line between this step and the next ── */}
+              {!isLast && (
+                <View style={styles.lineWrapper}>
+                  <View style={styles.lineTrack} />
+                  {isDone && <View style={styles.lineFill} />}
+                </View>
+              )}
+            </Fragment>
           );
         })}
       </View>
@@ -70,89 +84,112 @@ export function BookingProgress({ currentStep }: Props) {
   );
 }
 
+const DOT_SIZE = 30;
+const LINE_H = 3;
+// Push the connector line down so it centres with the dot.
+const LINE_MARGIN_TOP = (DOT_SIZE - LINE_H) / 2;
+
 const styles = StyleSheet.create({
-  container: {
+  wrapper: {
     backgroundColor: colors.white,
+    paddingHorizontal: spacing[5],
+    paddingTop: spacing[4],
+    paddingBottom: spacing[4],
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    paddingHorizontal: spacing[5],
-    paddingTop: spacing[3],
-    paddingBottom: spacing[4],
-    gap: spacing[2],
+    ...shadows.card,
   },
 
-  infoRow: {
+  // row-reverse → step 0 on right, step 4 on left.
+  // alignItems: 'flex-start' → each child starts at the top; we use marginTop on lines.
+  track: {
     flexDirection: 'row-reverse',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  stepCounter: {
-    fontFamily: 'Heebo_500Medium',
-    fontSize: fontSize.xs,
-    color: colors.muted,
-  },
-  stepNames: {
-    flexDirection: 'row-reverse',
+
+  // Each step is a fixed-width column (dot centred, label below).
+  stepCol: {
     alignItems: 'center',
     gap: spacing[1],
+    // Fixed width keeps dots evenly spaced regardless of label text length.
+    width: DOT_SIZE + spacing[4],
   },
-  currentStep: {
+
+  // ── Dot ────────────────────────────────────────────────────────────
+  dot: {
+    width: DOT_SIZE,
+    height: DOT_SIZE,
+    borderRadius: DOT_SIZE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // Future step default
+    backgroundColor: colors.surface.floating,
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  dotDone: {
+    backgroundColor: colors.brand[100],
+    borderColor: colors.brand[300],
+  },
+  dotActive: {
+    backgroundColor: colors.brand[600],
+    borderColor: colors.brand[600],
+    ...shadows.elevated,
+  },
+
+  checkmark: {
     fontFamily: 'Heebo_700Bold',
     fontSize: fontSize.sm,
-    color: colors.brand[700],
-    textAlign: 'right',
+    color: colors.brand[600],
+    lineHeight: fontSize.sm + 2,
   },
-  nextStep: {
-    fontFamily: 'Heebo_400Regular',
+  dotNumber: {
+    fontFamily: 'Heebo_700Bold',
     fontSize: fontSize.xs,
     color: colors.mutedForeground,
+    lineHeight: fontSize.xs + 2,
+  },
+  dotNumberActive: {
+    color: colors.white,
   },
 
-  // Track: relative container; fill + markers use absolute positioning
-  track: {
-    height: 6,
-    backgroundColor: colors.border,
-    borderRadius: radius.full,
+  // ── Step label ─────────────────────────────────────────────────────
+  // Always rendered (keeps height stable); invisible for non-active steps.
+  stepLabel: {
+    fontFamily: 'Heebo_500Medium',
+    fontSize: fontSize.xs,
+    color: 'transparent',   // invisible but occupies space
+    textAlign: 'center',
+  },
+  stepLabelActive: {
+    color: colors.brand[700],
+    fontFamily: 'Heebo_700Bold',
+  },
+
+  // ── Connector line ─────────────────────────────────────────────────
+  // flex: 1 fills remaining width between step columns.
+  // marginTop centres the line with the dot.
+  lineWrapper: {
+    flex: 1,
+    marginTop: LINE_MARGIN_TOP,
+    marginHorizontal: spacing[0.5],
+    height: LINE_H,
     position: 'relative',
   },
-
-  // Fill: anchored to the right edge, grows leftward as progress increases
-  fill: {
+  lineTrack: {
     position: 'absolute',
+    left: 0,
     right: 0,
-    top: 0,
-    height: 6,
-    backgroundColor: colors.brand[600],
+    height: LINE_H,
+    backgroundColor: colors.border,
     borderRadius: radius.full,
   },
-
-  // Markers: positioned from the right edge; centered with marginRight: -6
-  marker: {
+  lineFill: {
     position: 'absolute',
-    top: -3,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.border,
-    marginRight: -6,
-    borderWidth: 2,
-    borderColor: colors.white,
-  },
-  markerDone: {
-    backgroundColor: colors.brand[600],
-  },
-  markerActive: {
-    backgroundColor: colors.white,
-    borderColor: colors.brand[600],
-    borderWidth: 3,
-    width: 14,
-    height: 14,
-    top: -4,
-    marginRight: -7,
-    shadowColor: colors.brand[600],
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 3,
+    left: 0,
+    right: 0,
+    height: LINE_H,
+    backgroundColor: colors.brand[400],
+    borderRadius: radius.full,
   },
 });
