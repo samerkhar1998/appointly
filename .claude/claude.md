@@ -37,6 +37,33 @@
 | Reviews router/UI missing | Schema has `Review` model | No router, no dashboard UI, no post-appointment prompt |
 | Owner cancellation approval flow missing | `appointments.router.ts` | Cancellations outside the window should require owner approval; currently not implemented |
 
+## Real-Time Updates — Architecture & Rules
+
+### Mechanism
+- Uses **Supabase Realtime** (`postgres_changes`) when `NEXT_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_URL` are configured
+- Automatically falls back to **10-second polling** (`setInterval`) when the vars are absent — works with any Postgres setup in dev
+- The Supabase client (`apps/web/src/lib/supabase.ts`, `apps/mobile/src/lib/supabase.ts`) is a singleton with `auth.persistSession: false` — used only as a real-time event bus, not for auth
+
+### Hook — `useAppointmentEvents(salonId, onEvent)`
+- Lives in `apps/web/src/lib/use-appointment-events.ts` and `apps/mobile/src/lib/use-appointment-events.ts`
+- Subscribes to `postgres_changes` on the `Appointment` table filtered by `salon_id=eq.${salonId}`
+- `onEvent` is stored in a ref so callers can pass inline functions without causing re-subscriptions
+- Cleans up the Supabase channel (or clears the interval) on unmount
+
+### Where it is wired
+| Component | Effect of event |
+|-----------|----------------|
+| `CalendarPage.tsx` (web) | Invalidates all `appointments.listForCalendar` — updates both MobileDayView and FullCalendar |
+| `owner-calendar.tsx` (mobile) | Invalidates `appointments.listForCalendar` — today's schedule refreshes |
+| `StepDateTime.tsx` (web booking) | Invalidates all `availability.getSlots` — taken slots disappear from the picker |
+| `datetime.tsx` (mobile booking) | Same — slots vanish in real time as they are booked |
+
+### Rules
+- **Never enable Supabase auth** in these clients — they are event-bus only
+- **Never filter by anything other than `salon_id`** in the channel — other fields may not be indexed for Realtime
+- To add real-time to a new screen, import `useAppointmentEvents` and call `utils.<router>.<procedure>.invalidate()` in the callback
+- The Supabase anon key is safe to expose publicly — it is read-only by design; RLS policies control data access
+
 ## Concurrency & Race Condition Rules
 
 ### Booking — per-staff mutex (`appointments.create`)
@@ -287,8 +314,18 @@ UPSTASH_REDIS_REST_TOKEN=
 # App
 NEXT_PUBLIC_APP_URL=
 
+# Supabase Realtime (optional — enables live dashboard + slot updates)
+# If unset, the app falls back to 10-second polling automatically.
+# Find these in Supabase dashboard → Project Settings → API.
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+
 # Mobile (Expo)
 EXPO_PUBLIC_API_URL=              ← set to your local machine IP for device/emulator testing (e.g. http://192.168.1.x:3000)
+
+# Supabase Realtime — mobile mirrors the web vars with EXPO_PUBLIC_ prefix
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_ANON_KEY=
 
 # Testing (optional — dev/test only)
 TEST_OTP_CODE=                    ← when set, every OTP accepts this fixed code (e.g. "000000"); NEVER set in production

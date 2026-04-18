@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { trpc } from '@/lib/trpc';
 import { useBookingStore } from '@/store/booking';
+import { useAppointmentEvents } from '@/lib/use-appointment-events';
 import { BookingProgress } from '@/components/BookingProgress';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -45,6 +46,8 @@ export default function DateTimeScreen() {
 
   const dateStr = toDateString(selectedDate);
 
+  const utils = trpc.useUtils();
+
   const { data, isLoading, isError } = trpc.availability.getSlots.useQuery(
     {
       salon_id: booking.salon_id ?? '',
@@ -54,6 +57,12 @@ export default function DateTimeScreen() {
     },
     { enabled: !!(booking.salon_id && booking.service_id) },
   );
+
+  // Re-fetch available slots whenever another booking lands for this salon,
+  // so taken slots disappear from the picker in real time.
+  useAppointmentEvents(booking.salon_id ?? '', () => {
+    void utils.availability.getSlots.invalidate();
+  });
 
   function handleSlotSelect(slot: { start: string; staff_id: string }) {
     setBooking({ start_datetime: slot.start, staff_id: slot.staff_id });

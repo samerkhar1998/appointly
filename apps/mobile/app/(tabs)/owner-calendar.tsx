@@ -2,6 +2,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { trpc } from '@/lib/trpc';
 import { useAuthStore } from '@/store/auth';
+import { useAppointmentEvents } from '@/lib/use-appointment-events';
 import { Icon } from '@/components/ui/Icon';
 import { colors, fontSize, radius, shadows, spacing } from '@/lib/theme';
 import { t } from '@/lib/strings';
@@ -99,6 +100,8 @@ export default function OwnerCalendarTab() {
   const dateFrom = `${dateStr}T00:00:00.000Z`;
   const dateTo = `${dateStr}T23:59:59.999Z`;
 
+  const utils = trpc.useUtils();
+
   const { data: salon } = trpc.salons.getMySalon.useQuery(undefined, {
     enabled: !!user && user.role === 'SALON_OWNER',
   });
@@ -107,6 +110,11 @@ export default function OwnerCalendarTab() {
     { salon_id: salon?.id ?? '', date_from: dateFrom, date_to: dateTo },
     { enabled: !!salon?.id },
   );
+
+  // Refresh today's appointments whenever a new booking or status change arrives.
+  useAppointmentEvents(salon?.id ?? '', () => {
+    void utils.appointments.listForCalendar.invalidate();
+  });
 
   const appointments = (data ?? []) as CalendarAppointment[];
 

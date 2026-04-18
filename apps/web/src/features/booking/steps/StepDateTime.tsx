@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc';
+import { useAppointmentEvents } from '@/lib/use-appointment-events';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -36,6 +37,7 @@ function formatLocalTime(isoUtc: string, timezone: string) {
 export function StepDateTime({ salonId, serviceId, staffId, timezone, onSelect, onBack }: Props) {
   const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
   const [weekOffset, setWeekOffset] = useState(0);
+  const utils = trpc.useUtils();
 
   const dateStr = format(selectedDate, 'yyyy-MM-dd');
 
@@ -44,6 +46,12 @@ export function StepDateTime({ salonId, serviceId, staffId, timezone, onSelect, 
     service_id: serviceId,
     staff_id: staffId,
     date: dateStr,
+  });
+
+  // Re-fetch available slots whenever another booking is made for this salon,
+  // so taken slots disappear from the picker in real time.
+  useAppointmentEvents(salonId, () => {
+    void utils.availability.getSlots.invalidate();
   });
 
   // Build day strip (14 days from today, paginated by 7)
