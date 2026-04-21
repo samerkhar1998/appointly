@@ -20,28 +20,9 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { trpc } from '@/lib/trpc';
+import { useLocale, useTranslations } from 'next-intl';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-
-const tabItems = [
-  { href: '/dashboard', label: 'סקירה', icon: LayoutDashboard, exact: true },
-  { href: '/dashboard/calendar', label: 'לוח שנה', icon: Calendar },
-  { href: '/dashboard/clients', label: 'לקוחות', icon: Users },
-  { href: '/dashboard/staff', label: 'צוות', icon: UserSquare2 },
-  { href: '/dashboard/services', label: 'שירותים', icon: Scissors },
-] as const;
-
-const drawerItems = [
-  { href: '/dashboard', label: 'סקירה כללית', icon: LayoutDashboard, exact: true },
-  { href: '/dashboard/calendar', label: 'לוח שנה', icon: Calendar },
-  { href: '/dashboard/clients', label: 'לקוחות', icon: Users },
-  { href: '/dashboard/staff', label: 'צוות', icon: UserSquare2 },
-  { href: '/dashboard/services', label: 'שירותים', icon: Scissors },
-  { href: '/dashboard/shop', label: 'חנות', icon: ShoppingBag },
-  { href: '/dashboard/promos', label: 'קודי הנחה', icon: Tag },
-  { href: '/dashboard/analytics', label: 'ניתוח נתונים', icon: BarChart3 },
-  { href: '/dashboard/settings', label: 'הגדרות', icon: Settings },
-  { href: '/dashboard/plan', label: 'תוכנית', icon: CreditCard },
-] as const;
+import { LanguageToggle } from '@/components/LanguageToggle';
 
 function isActiveRoute(pathname: string, href: string, exact = false) {
   return exact ? pathname === href : pathname.startsWith(href);
@@ -50,6 +31,10 @@ function isActiveRoute(pathname: string, href: string, exact = false) {
 export function MobileNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const locale = useLocale();
+  const td = useTranslations('dashboard');
+  const ta = useTranslations('auth');
+  const tdisc = useTranslations('discovery');
   const [isOpen, setIsOpen] = useState(false);
 
   const { data: me } = trpc.auth.me.useQuery(undefined, { retry: false });
@@ -83,11 +68,30 @@ export function MobileNav() {
         .toUpperCase()
     : '?';
 
+  const tabItems = [
+    { href: '/dashboard', label: td('overview_short'), icon: LayoutDashboard, exact: true },
+    { href: '/dashboard/calendar', label: td('calendar'), icon: Calendar },
+    { href: '/dashboard/clients', label: td('clients'), icon: Users },
+    { href: '/dashboard/staff', label: td('staff'), icon: UserSquare2 },
+    { href: '/dashboard/services', label: td('services'), icon: Scissors },
+  ] as const;
+
+  const drawerItems = [
+    { href: '/dashboard', label: td('overview'), icon: LayoutDashboard, exact: true },
+    { href: '/dashboard/calendar', label: td('calendar'), icon: Calendar },
+    { href: '/dashboard/clients', label: td('clients'), icon: Users },
+    { href: '/dashboard/staff', label: td('staff'), icon: UserSquare2 },
+    { href: '/dashboard/services', label: td('services'), icon: Scissors },
+    { href: '/dashboard/shop', label: td('shop'), icon: ShoppingBag },
+    { href: '/dashboard/promos', label: td('promos'), icon: Tag },
+    { href: '/dashboard/analytics', label: td('analytics'), icon: BarChart3 },
+    { href: '/dashboard/settings', label: td('settings'), icon: Settings },
+    { href: '/dashboard/plan', label: td('plan'), icon: CreditCard },
+  ] as const;
+
   return (
     <>
       {/* ── Top header bar (mobile only) ── */}
-      {/* dir="ltr" overrides the document RTL so flex runs left→right physically:
-          [spacer] [logo] [hamburger]  — hamburger ends up on physical right. */}
       <header
         dir="ltr"
         className="lg:hidden fixed top-0 inset-x-0 z-40 h-14 bg-white border-b border-border
@@ -107,7 +111,7 @@ export function MobileNav() {
           className="w-10 h-10 flex items-center justify-center rounded-lg text-muted
                      hover:text-foreground hover:bg-surface-elevated transition-colors
                      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
-          aria-label="פתח תפריט"
+          aria-label={tdisc('open_menu')}
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -123,46 +127,36 @@ export function MobileNav() {
         )}
       />
 
-      {/* ── Drawer panel (slides in from the right — RTL convention) ── */}
-      {/*
-        Positioning: end-0 = right: 0 in RTL (anchored to right edge).
-        Animation: closed → translateX(+100%) pushes it off the right edge (off-screen right).
-                   open   → translateX(0) brings it back into view from the right.
-        This produces the correct RTL "slide in from right" effect.
-      */}
+      {/* ── Drawer panel ── */}
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="תפריט ניווט"
+        aria-label={tdisc('nav_menu')}
         className={cn(
           'lg:hidden fixed top-0 bottom-0 right-0 z-50 w-72 bg-white shadow-2xl flex flex-col',
           'transition-transform duration-300 ease-in-out',
           isOpen ? 'translate-x-0' : 'translate-x-full',
         )}
       >
-        {/* Drawer header — dir="ltr" for physical left→right layout:
-            [X button] [logo] [spacer] */}
+        {/* Drawer header */}
         <div
           dir="ltr"
           className="flex items-center justify-between h-14 px-3 border-b border-border shrink-0"
         >
-          {/* X close — physical left */}
           <button
             onClick={() => setIsOpen(false)}
             className="w-10 h-10 flex items-center justify-center rounded-lg text-muted
                        hover:text-foreground hover:bg-surface-elevated transition-colors
                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
-            aria-label="סגור תפריט"
+            aria-label={tdisc('close_menu')}
           >
             <X className="w-5 h-5" />
           </button>
 
-          {/* Logo icon — centre */}
           <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-brand-600">
             <Scissors className="w-4 h-4 text-white" />
           </div>
 
-          {/* Spacer — keeps logo centred */}
           <div className="w-10 h-10" />
         </div>
 
@@ -194,6 +188,9 @@ export function MobileNav() {
 
         {/* User profile + logout */}
         <div className="p-4 border-t border-border shrink-0">
+          <div className="flex justify-center mb-3">
+            <LanguageToggle currentLocale={locale} variant="drawer" />
+          </div>
           <div className="flex items-center gap-3 px-1 mb-3">
             <Avatar className="h-9 w-9 shrink-0">
               <AvatarFallback className="text-xs">{initials}</AvatarFallback>
@@ -211,7 +208,7 @@ export function MobileNav() {
                        disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <LogOut className="w-4 h-4 shrink-0" />
-            יציאה
+            {ta('logout')}
           </button>
         </div>
       </div>

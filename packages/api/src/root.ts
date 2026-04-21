@@ -1,5 +1,6 @@
 import { createTRPCRouter } from './trpc';
 import { authRouter } from './routers/auth.router';
+import { adminRouter } from './routers/admin.router';
 import { salonsRouter } from './routers/salons.router';
 import { staffRouter } from './routers/staff.router';
 import { servicesRouter } from './routers/services.router';
@@ -25,6 +26,7 @@ export const appRouter = createTRPCRouter({
   products: productsRouter,
   promoCodes: promoCodesRouter,
   analytics: analyticsRouter,
+  admin: adminRouter,
 });
 
 export type AppRouter = typeof appRouter;

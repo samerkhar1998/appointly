@@ -67,3 +67,13 @@ export const platformAdminProcedure = protectedProcedure.use(async ({ ctx, next 
   }
   return next({ ctx });
 });
+
+export const superAdminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
+  if (ctx.user.global_role !== 'SUPER_ADMIN') {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Only super admins can perform this action',
+    });
+  }
+  return next({ ctx });
+});

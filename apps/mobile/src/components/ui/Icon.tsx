@@ -12,6 +12,7 @@ import {
   BarChart2,
   Bell,
   Brush,
+  Bug,
   Building2,
   Calendar,
   ChevronDown,
@@ -131,6 +132,10 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
   // Greeting (used as friendly "name" step icon)
   'hand-left-outline':          Sparkles,
+
+  // Bug reports
+  'bug':                        Bug,
+  'bug-outline':                Bug,
 };
 
 // ─── Filled variants use thicker stroke to simulate "filled" look ─────────────

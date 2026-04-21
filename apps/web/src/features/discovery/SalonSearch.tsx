@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { Search, X, Building2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { trpc } from '@/lib/trpc';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,8 +11,6 @@ import { SalonCard } from './SalonCard';
 
 const PER_PAGE = 12;
 
-// Debounces a string value by the given delay in ms, returning the debounced value
-// and a setter that triggers the debounce.
 function useDebounce(delay = 400) {
   const [value, setValue] = useState('');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -24,9 +23,10 @@ function useDebounce(delay = 400) {
   return { debouncedValue: value, set };
 }
 
-// Full salon search UI: debounced text input + city filter + paginated results grid.
-// Used on the public discovery homepage.
 export function SalonSearch() {
+  const t = useTranslations('discovery');
+  const tc = useTranslations('common');
+
   const [rawQuery, setRawQuery] = useState('');
   const [page, setPage] = useState(1);
 
@@ -54,7 +54,7 @@ export function SalonSearch() {
         <Input
           value={rawQuery}
           onChange={(e) => handleQueryChange(e.target.value)}
-          placeholder="חפש עסק לפי שם או עיר..."
+          placeholder={t('search_placeholder')}
           className="ps-10 h-11 rounded-xl text-base"
           autoComplete="off"
         />
@@ -62,7 +62,7 @@ export function SalonSearch() {
           <button
             onClick={() => handleQueryChange('')}
             className="absolute end-3.5 top-1/2 -translate-y-1/2 text-muted hover:text-foreground transition-colors"
-            aria-label="נקה חיפוש"
+            aria-label={t('clear_search')}
           >
             <X className="h-4 w-4" />
           </button>
@@ -85,7 +85,7 @@ export function SalonSearch() {
         </div>
       ) : isError ? (
         <div className="text-center py-12">
-          <p className="text-muted">שגיאה בטעינת תוצאות. אנא נסה שוב.</p>
+          <p className="text-muted">{t('error')}</p>
         </div>
       ) : !data?.items.length ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -93,17 +93,17 @@ export function SalonSearch() {
             <Building2 className="h-6 w-6 text-muted" />
           </div>
           <p className="font-semibold text-foreground">
-            {query ? 'לא נמצאו תוצאות' : 'אין עסקים זמינים'}
+            {query ? t('no_results_title') : t('no_businesses_title')}
           </p>
           <p className="text-sm text-muted mt-1">
-            {query ? `לא מצאנו עסקים עבור "${query}"` : 'בקרוב יופיעו כאן עסקים'}
+            {query ? t('no_results_for_query', { query }) : t('coming_soon')}
           </p>
           {query && (
             <button
               onClick={() => handleQueryChange('')}
               className="mt-3 text-sm text-brand-600 hover:text-brand-700 underline underline-offset-2"
             >
-              הצג את כל העסקים
+              {t('show_all')}
             </button>
           )}
         </div>
@@ -132,7 +132,7 @@ export function SalonSearch() {
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
               >
-                הקודם
+                {tc('prev')}
               </Button>
               <span className="text-sm text-muted tabular-nums">
                 {page} / {totalPages}
@@ -143,7 +143,7 @@ export function SalonSearch() {
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
               >
-                הבא
+                {tc('next')}
               </Button>
             </div>
           )}
