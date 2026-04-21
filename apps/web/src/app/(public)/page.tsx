@@ -1,7 +1,6 @@
-import Link from 'next/link';
-import { Scissors, User } from 'lucide-react';
+import { Scissors } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { SalonSearch } from '@/features/discovery/SalonSearch';
-import { Button } from '@/components/ui/button';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -9,54 +8,29 @@ export const metadata: Metadata = {
   description: 'חפש עסקים קרובים וקבע תור בקלות',
 };
 
-// Public discovery homepage — server component.
-// Renders the hero + SalonSearch client island.
-export default function DiscoveryPage() {
+export default async function DiscoveryPage() {
+  const t = await getTranslations('discovery');
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Top nav */}
-      <header className="border-b border-border/50 bg-white/80 backdrop-blur-sm sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-brand-600">
-              <Scissors className="h-3.5 w-3.5 text-white" />
-            </div>
-            <span className="font-bold text-foreground tracking-tight">Appointly</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link href="/my-salons">
-              <Button variant="ghost" size="sm" className="gap-1.5 text-sm">
-                <User className="h-3.5 w-3.5" />
-                העסקים שלי
-              </Button>
-            </Link>
-            <Link href="/login">
-              <Button size="sm" className="text-sm">
-                כניסה לעסקים
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
-
       {/* Hero */}
-      <section className="max-w-5xl mx-auto px-4 pt-16 pb-10 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 border border-brand-100 text-brand-700 text-xs font-medium mb-6">
-          <Scissors className="h-3 w-3" />
-          מאות עסקים מחכים לך
+      <section className="max-w-5xl mx-auto px-4 pt-12 sm:pt-16 pb-8 sm:pb-10 text-center">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-50 border border-brand-100 text-brand-700 text-xs font-medium mb-5">
+          <Scissors className="h-3 w-3 shrink-0" />
+          <span>{t('badge')}</span>
         </div>
-        <h1 className="text-4xl sm:text-5xl font-bold tracking-tighter text-foreground leading-tight">
-          גלה עסקים
-          <span className="text-brand-600"> וקבע תור </span>
-          בשניות
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tighter text-foreground leading-tight">
+          {t('hero_title_1')}
+          <span className="text-brand-600"> {t('hero_title_accent')} </span>
+          {t('hero_title_2')}
         </h1>
-        <p className="mt-4 text-muted text-lg leading-relaxed max-w-md mx-auto">
-          מצא סלון, מספרה, קליניקה או כל עסק — וקבע תור ישירות, ללא התקנת אפליקציה
+        <p className="mt-3 sm:mt-4 text-muted text-base sm:text-lg leading-relaxed max-w-sm sm:max-w-md mx-auto">
+          {t('hero_subtitle')}
         </p>
       </section>
 
-      {/* Search */}
-      <main className="max-w-5xl mx-auto px-4 pb-20">
+      {/* Search + Results */}
+      <main className="max-w-5xl mx-auto px-3 sm:px-4 pb-20">
         <SalonSearch />
       </main>
     </div>

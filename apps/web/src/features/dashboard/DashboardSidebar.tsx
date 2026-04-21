@@ -1,13 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   BarChart3,
   Calendar,
   LayoutDashboard,
   LogOut,
-  Package,
   Scissors,
   Settings,
   ShoppingBag,
@@ -18,29 +17,33 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { trpc } from '@/lib/trpc';
-import { useRouter } from 'next/navigation';
+import { useLocale, useTranslations } from 'next-intl';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-
-const navItems = [
-  { href: '/dashboard', label: 'סקירה כללית', icon: LayoutDashboard, exact: true },
-  { href: '/dashboard/calendar', label: 'לוח שנה', icon: Calendar },
-  { href: '/dashboard/clients', label: 'לקוחות', icon: Users },
-  { href: '/dashboard/staff', label: 'צוות', icon: UserSquare2 },
-  { href: '/dashboard/services', label: 'שירותים', icon: Scissors },
-  { href: '/dashboard/shop', label: 'חנות', icon: ShoppingBag },
-  { href: '/dashboard/promos', label: 'קודי הנחה', icon: Tag },
-  { href: '/dashboard/analytics', label: 'ניתוח נתונים', icon: BarChart3 },
-];
-
-const bottomItems = [
-  { href: '/dashboard/settings', label: 'הגדרות', icon: Settings },
-  { href: '/dashboard/plan', label: 'תוכנית', icon: CreditCard },
-];
+import { LanguageToggle } from '@/components/LanguageToggle';
 
 export function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const locale = useLocale();
+  const td = useTranslations('dashboard');
+  const ta = useTranslations('auth');
+
+  const navItems = [
+    { href: '/dashboard', label: td('overview'), icon: LayoutDashboard, exact: true },
+    { href: '/dashboard/calendar', label: td('calendar'), icon: Calendar },
+    { href: '/dashboard/clients', label: td('clients'), icon: Users },
+    { href: '/dashboard/staff', label: td('staff'), icon: UserSquare2 },
+    { href: '/dashboard/services', label: td('services'), icon: Scissors },
+    { href: '/dashboard/shop', label: td('shop'), icon: ShoppingBag },
+    { href: '/dashboard/promos', label: td('promos'), icon: Tag },
+    { href: '/dashboard/analytics', label: td('analytics'), icon: BarChart3 },
+  ];
+
+  const bottomItems = [
+    { href: '/dashboard/settings', label: td('settings'), icon: Settings },
+    { href: '/dashboard/plan', label: td('plan'), icon: CreditCard },
+  ];
 
   const { data: me } = trpc.auth.me.useQuery(undefined, { retry: false });
   const logoutMutation = trpc.auth.logout.useMutation({
@@ -121,6 +124,12 @@ export function DashboardSidebar() {
           </Link>
         ))}
 
+        {/* Language */}
+        <Separator className="my-3" />
+        <div className="flex items-center justify-center px-3 pb-1">
+          <LanguageToggle currentLocale={locale} variant="sidebar" />
+        </div>
+
         {/* User */}
         <Separator className="my-3" />
         <div className="flex items-center gap-3 px-3 py-2">
@@ -134,7 +143,7 @@ export function DashboardSidebar() {
           <button
             onClick={() => logoutMutation.mutate()}
             className="text-muted hover:text-red-500 transition-colors duration-150 p-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 active:scale-95"
-            aria-label="יציאה"
+            aria-label={ta('logout')}
           >
             <LogOut className="w-4 h-4" />
           </button>

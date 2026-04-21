@@ -16,6 +16,19 @@ enum GlobalRole {
   CUSTOMER
   SALON_OWNER
   PLATFORM_ADMIN
+  SUPER_ADMIN
+}
+
+enum BugReportType {
+  BUG
+  SUGGESTION
+  OTHER
+}
+
+enum BugReportStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
 }
 
 enum SalonRole {
@@ -119,7 +132,10 @@ model User {
   global_role   GlobalRole  @default(CUSTOMER)
   is_active     Boolean     @default(true)
 
-  salon_members SalonMember[]
+  salon_members     SalonMember[]
+  admin_invites     AdminInvite[]    @relation("AdminInviteCreator")
+  bug_reports       BugReport[]
+  bug_report_notes  BugReportNote[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -658,4 +674,60 @@ model Review {
   rating     Int     // 1–5
   comment    String?
   is_visible Boolean @default(true)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AdminInvite — one-time tokens to register a SUPER_ADMIN account
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AdminInvite {
+  id         String    @id @default(cuid())
+  created_at DateTime  @default(now())
+  token      String    @unique @default(uuid())
+  used_at    DateTime?
+  created_by String
+  creator    User      @relation("AdminInviteCreator", fields: [created_by], references: [id])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BugReport — submitted by anyone (owners, customers, or anonymous)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model BugReport {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  type        BugReportType
+  title       String
+  description String
+  status      BugReportStatus @default(NEW)
+
+  submitted_by_user_id String?
+  submitted_by_user    User?   @relation(fields: [submitted_by_user_id], references: [id], onDelete: SetNull)
+  submitted_by_phone   String?
+  submitted_by_name    String?
+
+  page_url       String?
+  device_info    String?
+  screenshot_url String?
+
+  notes BugReportNote[]
+
+  @@index([status])
+  @@index([created_at])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BugReportNote — internal admin notes on a bug report
+// ─────────────────────────────────────────────────────────────────────────────
+
+model BugReportNote {
+  id         String    @id @default(cuid())
+  created_at DateTime  @default(now())
+  body       String
+  report_id  String
+  report     BugReport @relation(fields: [report_id], references: [id], onDelete: Cascade)
+  admin_id   String
+  admin      User      @relation(fields: [admin_id], references: [id])
 }

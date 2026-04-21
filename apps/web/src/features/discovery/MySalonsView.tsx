@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { Phone, Building2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { Phone, Scissors, ArrowRight, Building2, Loader2 } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -31,24 +31,6 @@ export function MySalonsView() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Nav */}
-      <header className="border-b border-border/50 bg-white/80 backdrop-blur-sm sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-3">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-muted hover:text-foreground transition-colors"
-          >
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-brand-600">
-              <Scissors className="h-3.5 w-3.5 text-white" />
-            </div>
-            <span className="font-bold text-foreground tracking-tight">העסקים שלי</span>
-          </div>
-        </div>
-      </header>
-
       <main className="max-w-5xl mx-auto px-4 py-12">
         <div className="max-w-sm mx-auto text-center mb-10">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-50 mb-4">

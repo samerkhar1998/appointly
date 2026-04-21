@@ -40,7 +40,7 @@ async function getUserFromRequest(req: ApiRequest): Promise<AuthUser | null> {
       token = authHeader.slice(7);
     } else {
       const cookies = parseCookies(req.headers.cookie ?? '');
-      token = cookies['appointly_token'];
+      token = cookies['admin_token'] ?? cookies['appointly_token'];
     }
     if (!token) return null;
 

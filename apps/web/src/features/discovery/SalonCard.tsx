@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { MapPin, ArrowLeft } from 'lucide-react';
+import { MapPin, ArrowLeft, ArrowRight } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Button } from '@/components/ui/button';
 
 interface SalonCardProps {
@@ -42,6 +43,9 @@ export function SalonCard({
   clientToken,
   inviteToken,
 }: SalonCardProps) {
+  const t = useTranslations('discovery');
+  const locale = useLocale();
+  const ArrowIcon = locale === 'en' ? ArrowRight : ArrowLeft;
   const bookingUrl = buildBookingUrl(slug, clientToken, inviteToken);
 
   return (
@@ -102,8 +106,8 @@ export function SalonCard({
             size="sm"
             className="w-full gap-1.5 group-hover:gap-2.5 transition-[gap] duration-200"
           >
-            קבע תור
-            <ArrowLeft className="h-3.5 w-3.5" />
+            {t('book_cta')}
+            <ArrowIcon className="h-3.5 w-3.5" />
           </Button>
         </Link>
       </div>
