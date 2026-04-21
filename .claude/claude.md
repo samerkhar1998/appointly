@@ -19,6 +19,9 @@
 | 9c | Mobile auth — customer login (OTP), owner login/register, role-based tab layout | ✅ Done |
 | 9d | CustomerProfile — persistent customer identity; name stored after first OTP; pre-fill booking details; OTP skip for known customers | ✅ Done |
 | 9e | In-app appointment cancellation — cancel from My Appointments tab; owner-configured window; cancellation policy on salon profile | ✅ Done |
+| 9f | i18n language toggle — Hebrew / Arabic / English, cookie-based locale (NEXT_LOCALE), next-intl, globe dropdown in header + sidebar | ✅ Done |
+| 9g | Super-Admin panel — `(admin)` route group, `superAdminProcedure`, dark sidebar, stats / salons / users / bug-reports / disputes pages, `admin_token` cookie | ✅ Done |
+| 9h | Bug Report system — `BugReport` + `BugReportNote` + `AdminInvite` models, `SUPER_ADMIN` global role, floating FAB on web + mobile, Profile tab row, `admin:invite` CLI script | ✅ Done |
 | 10 | Test suite — happy-path tests for every tRPC procedure | 🔜 Next |
 | 11 | Tranzila payment integration — subscription billing + plan enforcement | 🔜 Next |
 | 12 | Expo Push Notifications — booking confirmations + reminders on mobile | 🔜 Next |
@@ -36,6 +39,69 @@
 | `?client=TOKEN` not handled on mobile | `apps/mobile/app/book/[slug]/index.tsx` | Web supports pre-fill + OTP skip; mobile ignores the param |
 | Reviews router/UI missing | Schema has `Review` model | No router, no dashboard UI, no post-appointment prompt |
 | Owner cancellation approval flow missing | `appointments.router.ts` | Cancellations outside the window should require owner approval; currently not implemented |
+
+## Super-Admin Panel — Architecture & Rules
+
+### Route group
+- All admin pages live under `apps/web/src/app/(admin)/admin/`
+- Completely isolated from `(dashboard)` and `(auth)` — own layout, own auth check, own sidebar
+- The `(admin)/layout.tsx` reads `admin_token` cookie and renders `AdminSidebar` only when authenticated
+- Individual pages call `requireAdmin()` from `apps/web/src/lib/admin-auth.ts` which redirects to `/admin/login` when unauthenticated
+
+### JWT cookie
+- Admin uses a **separate cookie** named `admin_token` (not `appointly_token`)
+- Same JWT secret, same `verifyJwt()` helper, but payload includes `role: 'SUPER_ADMIN'`
+- `requireAdmin()` verifies the cookie AND checks `payload.role === 'SUPER_ADMIN'`
+- A salon owner cannot access the admin panel; a super admin cannot access `/dashboard`
+
+### tRPC procedure
+- `superAdminProcedure` is defined in `packages/api/src/trpc.ts`
+- It extends `protectedProcedure` and additionally checks `ctx.user.global_role === 'SUPER_ADMIN'`
+- `admin.submitBugReport` is the **only** admin procedure on `publicProcedure` — no auth required by design
+
+### Admin invite flow
+- `AdminInvite` model: `token` (UUID), `created_by`, `used_at`
+- `admin.createInvite` — `superAdminProcedure` — creates a record and returns the registration URL
+- `admin.registerWithInvite` — `publicProcedure` — validates the token is unused, creates the user with `global_role: SUPER_ADMIN`, marks `used_at`
+- CLI script: `packages/db/prisma/create-admin-invite.ts` — run with `pnpm --filter @appointly/db admin:invite <user-id>`
+- **Never expose a raw admin invite token in a public URL after it has been used**
+
+### Bug report button
+- Web: `apps/web/src/components/BugReportButton.tsx` — fixed `bottom-6 start-6 z-50`, renders on every page via `apps/web/src/app/layout.tsx`
+- Mobile: `apps/mobile/src/components/BugReportButton.tsx` — supports both FAB mode (rendered from `_layout.tsx`) and controlled mode (open/onClose props, used in Profile tab)
+- Both call `trpc.admin.submitBugReport` which is public — no auth required, no user session needed
+- Success message (web): "תודה! הדיווח התקבל" — Profile tab row label: "דווח על בעיה"
+
+### Design rules (admin pages only)
+- `dir="ltr"` on all admin page containers — admin panel is English-only, no RTL
+- Sidebar background: `#0f172a` (slate-900)
+- Monetary values: `Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS' })`
+- Dates: `Intl.DateTimeFormat('he-IL')`
+- No `t()` / next-intl in admin pages — all strings are hardcoded English
+
+## i18n Language Toggle — Architecture & Rules
+
+### Locale storage
+- Locale is stored in a cookie named `NEXT_LOCALE` (1-year TTL, `sameSite: lax`)
+- `apps/web/src/i18n.ts` reads this cookie in `getRequestConfig` and falls back to `'he'`
+- `apps/web/src/app/actions/locale.ts` exports `setLocale(locale)` — a server action that sets the cookie
+- After setting the cookie the client calls `router.refresh()` inside a `startTransition`
+
+### Root layout
+- `apps/web/src/app/layout.tsx` reads `NEXT_LOCALE` cookie and sets `lang` + `dir` on `<html>`
+- Hebrew / Arabic → `dir="rtl"`, English → `dir="ltr"`
+
+### Toggle component
+- `LanguageToggle` (client) — globe icon + short code + chevron, opens a dropdown with full language names
+- `LanguageToggleServer` (server wrapper) — reads cookie and passes `currentLocale` prop
+- `dir="ltr"` on the toggle container prevents the button from flipping in RTL layouts
+- Sidebar variant opens **upward** (`bottom-full`); header variant opens **downward** (`top-full`)
+
+### Rules
+- Never hardcode locale in `<html>` — always read from the cookie in the root layout
+- Never use `left`/`right` on the toggle — use `start`/`end` so it stays stable across RTL/LTR
+- All new user-facing strings must be added to all three translation files: `he.json`, `ar.json`, `en.json`
+- Admin panel pages are **exempt** from `t()` — they are English-only internal tools
 
 ## Real-Time Updates — Architecture & Rules
 
@@ -214,13 +280,15 @@
 
 ## tRPC Rules
 - All procedures must have a Zod input schema — never use `z.any()`
-- Use `protectedProcedure` for any route that requires salon owner auth
-- Use `publicProcedure` for booking pages, OTP, availability, cancel by token
+- Use `protectedProcedure` for any route that requires auth (base for role checks)
+- Use `salonOwnerProcedure` for all salon dashboard mutations
+- Use `superAdminProcedure` for all admin panel mutations — never use `protectedProcedure` alone for admin routes
+- Use `publicProcedure` for booking pages, OTP, availability, cancel by token, and `admin.submitBugReport`
 - Never call Prisma directly from components — always through tRPC
 - Error messages must be user-facing safe (no raw DB errors leaked)
 - `salon_id` on `sendOTPSchema` is optional — customer-only flows (e.g. mobile login) omit it
 - Routers: `auth`, `salons`, `salonSettings`, `staff`, `services`, `availability`,
-  `appointments`, `salonClients`, `orders`, `products`, `promoCodes`, `analytics`, `verification`
+  `appointments`, `salonClients`, `orders`, `products`, `promoCodes`, `analytics`, `verification`, `admin`
 
 ## Prisma / Database Rules
 - Always run `prisma generate` after schema changes

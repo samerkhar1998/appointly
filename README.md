@@ -27,7 +27,7 @@ Salon owners get a full management dashboard; their customers book appointments 
 |-----|-------------|
 | **Customer** | Opens `/book/[salon-slug]` → picks a service → picks a staff member (optional) → picks a date & time → fills in details → verifies phone via OTP → receives a WhatsApp/SMS confirmation with a one-click magic-link to cancel |
 | **Salon owner** | Logs into `/dashboard` → manages appointments (calendar + list), staff, services, clients, shop, promo codes, analytics, and all salon settings including WhatsApp templates |
-| **Platform admin** | Manages plans, billing, and global settings |
+| **Super admin** | Logs into `/admin` → monitors platform stats, manages all salons (suspend/change plan), looks up users and their appointment history, triages bug reports and internal disputes |
 
 ---
 
@@ -50,7 +50,7 @@ Salon owners get a full management dashboard; their customers book appointments 
 | Calendar UI | FullCalendar |
 | Charts | Recharts |
 | Payments (V2) | Tranzila (Israel-native) |
-| Mobile (future) | React Native + Expo |
+| Mobile | React Native + Expo (fully shipped) |
 
 ---
 
@@ -74,6 +74,15 @@ appointly/
 │   │   │   │       ├── analytics/        # Charts + KPIs
 │   │   │   │       ├── settings/         # Salon settings + WhatsApp template
 │   │   │   │       └── plan/             # Subscription plan
+│   │   │   ├── (admin)/            # /admin/* — SUPER_ADMIN only
+│   │   │   │   └── admin/
+│   │   │   │       ├── page.tsx          # Dashboard — stat cards
+│   │   │   │       ├── login/            # Admin sign-in (admin_token cookie)
+│   │   │   │       ├── register/         # Invite-based admin registration
+│   │   │   │       ├── salons/           # All salons — suspend, change plan
+│   │   │   │       ├── users/            # User lookup + appointment history
+│   │   │   │       ├── bug-reports/      # Bug report triage + notes
+│   │   │   │       └── disputes/         # Appointment timeline by phone
 │   │   │   ├── (public)/           # No auth required
 │   │   │   │   ├── book/[slug]/    # Customer booking flow
 │   │   │   │   └── cancel/[token]/ # Appointment cancellation
@@ -92,11 +101,14 @@ appointly/
 │   │   │   │       ├── StepDetails.tsx
 │   │   │   │       ├── StepOTP.tsx
 │   │   │   │       └── StepConfirmation.tsx
-│   │   │   └── dashboard/          # All dashboard page components
-│   │   ├── src/components/ui/      # shadcn/ui component library
-│   │   ├── src/lib/                # tRPC client, utils, hooks
+│   │   │   ├── dashboard/          # All dashboard page components
+│   │   │   └── admin/              # Admin panel feature components
+│   │   ├── src/components/
+│   │   │   ├── ui/                 # shadcn/ui component library
+│   │   │   └── BugReportButton.tsx # Floating bug-report FAB (on every page)
+│   │   ├── src/lib/                # tRPC client, utils, hooks, admin-auth.ts
 │   │   └── messages/               # i18n files: he.json, ar.json, en.json
-│   └── mobile/                     # React Native + Expo (future)
+│   └── mobile/                     # React Native + Expo
 │
 ├── packages/
 │   ├── api/                        # All tRPC routers + business logic
@@ -108,8 +120,9 @@ appointly/
 │   │       └── trpc.ts             # Procedure types + context
 │   ├── db/                         # Prisma schema, migrations, seed
 │   │   └── prisma/
-│   │       ├── schema.prisma       # 20 models, 10 enums
-│   │       └── seed.ts             # Demo salon, owner, staff, services
+│   │       ├── schema.prisma           # 23 models, 13 enums
+│   │       ├── seed.ts                 # Demo salon, owner, staff, services
+│   │       └── create-admin-invite.ts  # CLI: generate a super-admin invite link
 │   ├── shared/                     # Zod schemas shared across all packages
 │   └── ui/                         # Shared component library (future)
 │
@@ -172,6 +185,22 @@ The seed creates:
 - 3 staff members with weekly schedules
 - 5 services across 2 categories
 
+### 6. Create the first super-admin account
+
+The admin panel has no built-in sign-up form — access is gated by single-use invite tokens.
+
+```bash
+# 1. Manually insert a SUPER_ADMIN user in the DB (Prisma Studio is easiest):
+#    global_role = SUPER_ADMIN, email = admin@example.com, password_hash = <hash>
+
+# 2. Generate an invite link using that user's ID:
+pnpm --filter @appointly/db admin:invite <user-id>
+# Prints:  http://localhost:3000/admin/register?token=<uuid>
+
+# 3. Open the URL, fill in name / email / password → registered!
+# 4. Sign in at http://localhost:3000/admin/login
+```
+
 ### 5. Start the dev server
 
 ```bash
@@ -221,10 +250,23 @@ UPSTASH_REDIS_REST_TOKEN=
 # ── App ───────────────────────────────────────────────────
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
-# ── Testing (optional — dev / CI only) ───────────────────
+# ── Supabase Realtime (optional — enables live slot + calendar updates) ──────
+# If unset the app falls back to 10-second polling automatically.
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+
+# ── Mobile (Expo) ─────────────────────────────────────────────────────────────
+# Use your machine's LAN IP when testing on a physical device or emulator
+EXPO_PUBLIC_API_URL=http://localhost:3000
+EXPO_PUBLIC_SUPABASE_URL=
+EXPO_PUBLIC_SUPABASE_ANON_KEY=
+
+# ── Testing (optional — dev / CI only) ───────────────────────────────────────
 # When set, every OTP uses this fixed code instead of a random 6-digit number.
 # NEVER set this in production.
 # TEST_OTP_CODE=000000
+# EXPO_PUBLIC_TEST_OTP_CODE=000000
+# NEXT_PUBLIC_TEST_OTP_CODE=000000
 ```
 
 **Dev shortcuts:** Twilio, Cloudinary, Resend, and Redis are all optional.  
@@ -508,6 +550,46 @@ Go to `/dashboard/settings`.
 
 ---
 
+### Super-admin panel
+
+The admin panel lives at `/admin` and is completely separate from the salon dashboard — different route group, different JWT cookie (`admin_token`), different sidebar.
+
+**First-time setup:**
+1. Create a `SUPER_ADMIN` user directly in the DB (Prisma Studio → User table, set `global_role = SUPER_ADMIN`)
+2. Run `pnpm --filter @appointly/db admin:invite <user-id>` — prints a `/admin/register?token=…` URL
+3. Open the URL → fill in name, email, password → account created
+4. Go to `/admin/login`, sign in
+
+**Dashboard:**
+- 5 stat cards: Total Salons, Active Salons, Total Users, MRR (₪), Open Bug Reports
+- Data comes from `admin.getStats` — counts across all tenants
+
+**Salons page:**
+- Full table of all salons with search (name, slug, city, owner email)
+- Per-row: suspend / reactivate toggle, plan change dropdown
+- Both actions call their respective tRPC mutations and invalidate the table
+
+**Users page:**
+- Search by phone, email, or name
+- Returns matching users with role badge and owned salons
+- "View appointments" expands to show full cross-salon appointment history
+
+**Bug Reports page:**
+- Filter by status (New / In Progress / Resolved) and type (Bug / Suggestion / Other)
+- Click any row → detail dialog with full description, submitter info, device info
+- Change status via dropdown; add internal admin notes
+
+**Disputes page:**
+- Enter a phone number → shows all appointments across all salons for that customer
+- Useful for resolving "I never cancelled that!" type disputes
+
+**Inviting another admin:**
+1. Sign in to `/admin`
+2. Call `admin.createInvite` via the CLI or Prisma Studio
+3. Share the printed URL with the new admin
+
+---
+
 ### Dashboard — plan
 
 Go to `/dashboard/plan`.
@@ -550,6 +632,16 @@ Without Cloudinary env vars, the `ImageUpload` component renders but upload requ
 To enable: set `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`.
 
 The upload endpoint is at `/api/upload` — it generates a signed upload URL that the client posts to directly. Files never pass through the Next.js server.
+
+---
+
+### Bug Report button
+
+A floating 🐛 button appears fixed to the bottom-left corner on every page of the web app and every screen of the mobile app.
+
+- **Web:** click the button → dialog opens → fill type / title / description → submit calls `admin.submitBugReport` → success toast "תודה! הדיווח התקבל"
+- **Mobile:** same button in the bottom-left of every screen; the Profile tab also has a dedicated "דווח על בעיה" menu row
+- Reports appear immediately in `/admin/bug-reports` with status `NEW`
 
 ---
 
@@ -669,13 +761,16 @@ Replace `<cancel_token>` with a real UUID from Prisma Studio → Appointment tab
 
 ### tRPC procedures
 
-Three types enforce access control at the middleware level:
+Four types enforce access control at the middleware level:
 
 | Type | Who can call | Used for |
 |------|-------------|---------|
-| `publicProcedure` | Anyone | Booking, OTP, availability, cancel by token |
-| `protectedProcedure` | Authenticated users | Future: customer account features |
-| `salonOwnerProcedure` | Salon owners + admins | All dashboard mutations |
+| `publicProcedure` | Anyone | Booking, OTP, availability, cancel by token, bug report submission |
+| `protectedProcedure` | Authenticated users (any role) | Base for role-specific procedures |
+| `salonOwnerProcedure` | `SALON_OWNER` or `PLATFORM_ADMIN` | All salon dashboard mutations |
+| `superAdminProcedure` | `SUPER_ADMIN` only | All admin panel procedures |
+
+The admin panel uses a **separate JWT cookie** (`admin_token`) from the main app (`appointly_token`). A salon owner cannot access the admin panel, and a super admin has no access to individual salon dashboards — the roles are fully isolated.
 
 ### Availability engine
 
@@ -748,7 +843,7 @@ The app is Hebrew-first:
 - Dates: `Intl.DateTimeFormat('he-IL')` always with the salon's IANA timezone
 - Locale routing: `next-intl` middleware; translation files at `apps/web/messages/{he,ar,en}.json`
 
-### Database schema (20 models)
+### Database schema (23 models)
 
 ```
 Salon ──< SalonMember >── User
@@ -780,18 +875,19 @@ All appointment queries scope by `salon_id`. No cross-salon data leakage is poss
 | Router | Key procedures |
 |--------|---------------|
 | `auth` | `login`, `logout`, `me`, `register`, `changePassword` |
-| `salons` | `create`, `getBySlug`, `update`, `updateHours` |
+| `salons` | `create`, `getBySlug`, `update`, `updateHours`, `getInvites`, `revokeInvite` |
 | `salonSettings` | `get`, `update` |
 | `staff` | `list` (public), `listAll`, `createSimple`, `update`, `deactivate`, `setSchedule`, `addBlockedTime`, `listBlockedTimes`, `removeBlockedTime` |
 | `services` | `list` (public), `listAll`, `create`, `update`, `toggle` |
 | `availability` | `getSlots` (public) |
-| `appointments` | `create` (public), `getByToken` (public), `list`, `listForCalendar`, `confirm`, `decline`, `cancelByToken` (public), `requestOTP` (public), `cancelByOTP` (public), `updateStatus` |
+| `appointments` | `create` (public), `getByToken` (public), `getByPhone` (public), `list`, `listForCalendar`, `confirm`, `decline`, `cancelByToken` (public), `cancelByPhone` (public), `requestOTP` (public), `cancelByOTP` (public), `updateStatus` |
 | `salonClients` | `getByToken` (public), `list`, `get`, `addNote`, `block`, `unblock` |
-| `verification` | `sendOTP` (public), `verifyOTP` (public) |
+| `verification` | `sendOTP` (public), `verifyOTP` (public), `setCustomerName` (public), `issueTokenForKnownCustomer` (public) |
 | `products` | `list`, `create`, `update`, `delete` |
 | `orders` | `list`, `create` |
 | `promoCodes` | `list`, `create`, `deactivate`, `validate` (public) |
 | `analytics` | `overview`, `topClients`, `promoPerformance` |
+| `admin` | `login` (public), `registerWithInvite` (public), `submitBugReport` (public), `createInvite`, `getStats`, `getSalons`, `setSalonActive`, `setSalonPlan`, `getPlans`, `getUsers`, `getUserAppointments`, `getBugReports`, `getBugReport`, `updateBugReportStatus`, `addBugReportNote` |
 
 ---
 
@@ -816,14 +912,24 @@ All appointment queries scope by `salon_id`. No cross-salon data leakage is poss
 |-------|-------------|--------|
 | 1 | Monorepo scaffold (Turborepo, Next.js 14, Prisma, tRPC v11) | ✅ Done |
 | 2 | Dashboard UI shell — sidebar, calendar, services, staff, clients | ✅ Done |
-| 3 | Full Prisma schema (20 models) + all tRPC routers | ✅ Done |
+| 3 | Full Prisma schema + all tRPC routers | ✅ Done |
 | 4 | 5-step booking flow, cancel page, all dashboard pages wired to tRPC | ✅ Done |
 | 5 | Auth — email/password (scrypt), Google OAuth, registration, JWT cookies | ✅ Done |
-| 6 | Notification service (Twilio/Resend), auto-confirm, phone OTP | ✅ Done |
+| 6 | Notification service (Twilio/Resend), auto-confirm, phone OTP cancellation | ✅ Done |
 | 7 | BullMQ reminder jobs (24h + 1h before appointment) | ✅ Done |
 | 8 | Cloudinary image uploads (salon logo, staff avatars, product photos) | ✅ Done |
-| 9 | Staff step in booking flow, enhanced cancel page, client token pre-fill | ✅ Done |
-| 10 | Mobile app (React Native + Expo) | ✅ Done |
+| 9 | Mobile app (React Native + Expo) | ✅ Done |
+| 9b | Public/private discovery — search homepage, invite links, My Salons | ✅ Done |
+| 9c | Mobile auth — customer OTP login, owner login/register, role-based tabs | ✅ Done |
+| 9d | CustomerProfile — persistent identity, pre-fill booking, OTP skip | ✅ Done |
+| 9e | In-app cancellation — cancel window, cancellation policy on salon profile | ✅ Done |
+| 9f | i18n — Hebrew / Arabic / English language toggle (next-intl, cookie-based) | ✅ Done |
+| 9g | Super-Admin panel + Bug Report system | ✅ Done |
+| 10 | Test suite — happy-path tests for every tRPC procedure | 🔜 Next |
+| 11 | Tranzila payment integration — subscription billing + plan enforcement | 🔜 Next |
+| 12 | Expo Push Notifications — booking confirmations + reminders on mobile | 🔜 Next |
+| 13 | Production deployment — Vercel + Supabase + Upstash + EAS Build | 🔜 Next |
+| 14 | App Store + Play Store submission via EAS | 🔜 Next |
 
 ---
 
@@ -843,6 +949,7 @@ npx expo start --android              # Open straight in Android Emulator
 pnpm typecheck                        # All packages via Turborepo
 npx tsc --noEmit -p apps/web/tsconfig.json
 npx tsc --noEmit -p packages/api/tsconfig.json
+npx tsc --noEmit -p apps/mobile/tsconfig.json
 
 # ── Linting ──────────────────────────────────────────────────────────────────
 pnpm lint
@@ -857,4 +964,8 @@ $PRISMA generate      $SCHEMA        # Regenerate the Prisma client after schema
 $PRISMA migrate dev   $SCHEMA        # Apply pending migrations in dev
 $PRISMA db seed       $SCHEMA        # Re-seed the demo data
 $PRISMA migrate reset $SCHEMA        # Drop + recreate + re-seed (wipes all data)
+
+# ── Admin ────────────────────────────────────────────────────────────────────
+# Generate a one-time admin invite link (requires an existing SUPER_ADMIN user ID)
+pnpm --filter @appointly/db admin:invite <user-id>
 ```
