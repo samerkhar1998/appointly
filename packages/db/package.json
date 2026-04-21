@@ -12,7 +12,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "prisma:validate": "prisma validate",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "admin:invite": "tsx prisma/create-admin-invite.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.18.0"

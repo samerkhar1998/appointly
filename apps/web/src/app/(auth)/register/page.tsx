@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/lib/use-toast';
-import { Toaster } from '@/components/ui/toaster';
 import { trpc } from '@/lib/trpc';
 import { cn } from '@/lib/utils';
 
@@ -214,7 +213,6 @@ export default function RegisterPage() {
           </p>
         </div>
       </div>
-      <Toaster />
     </>
   );
 }

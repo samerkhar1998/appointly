@@ -169,23 +169,23 @@ export function BookingFlow({
         backgroundImage: `radial-gradient(ellipse 70% 50% at 50% -10%, rgba(124,58,237,0.10) 0%, transparent 65%)`,
       }}
     >
-      {/* Header */}
-      <header className="bg-white border-b border-border shadow-card">
-        <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
+      {/* Salon identity bar — not sticky, just contextual branding */}
+      <div className="bg-white border-b border-border">
+        <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt={salonName} className="h-9 w-9 rounded-xl object-cover" />
+            <img src={logoUrl} alt={salonName} className="h-9 w-9 rounded-xl object-cover shrink-0" />
           ) : (
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-brand-600">
+            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-brand-600 shrink-0">
               <Scissors className="w-4 h-4 text-white" />
             </div>
           )}
-          <div>
-            <h1 className="font-bold text-base tracking-tighter text-foreground">{salonName}</h1>
+          <div className="min-w-0">
+            <h1 className="font-bold text-base tracking-tighter text-foreground truncate">{salonName}</h1>
             <p className="text-xs text-muted">קביעת תור</p>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Progress bar */}
       {step !== 'confirmation' && (

@@ -14,6 +14,7 @@ import {
 import { trpc, createTrpcClient } from '@/lib/trpc';
 import { useAuthStore } from '@/store/auth';
 import { colors } from '@/lib/theme';
+import { BugReportButton } from '@/components/BugReportButton';
 
 // ─── RTL — runs before any UI renders ─────────────────────────────────────────
 // This app targets the Israeli market and is always RTL regardless of device
@@ -87,6 +88,7 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
           <StatusBar style="dark" />
+          <BugReportButton />
           <RootRedirect />
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -5,6 +6,7 @@ import { useAuthStore } from '@/store/auth';
 import { Icon } from '@/components/ui/Icon';
 import type { IconName } from '@/components/ui/Icon';
 import { colors, fontSize, radius, shadows, spacing } from '@/lib/theme';
+import { BugReportButton } from '@/components/BugReportButton';
 
 type MenuRowProps = {
   icon: IconName;
@@ -43,6 +45,7 @@ function SectionHeader({ title }: { title: string }) {
 export default function ProfileTab() {
   const insets = useSafeAreaInsets();
   const { user, logout } = useAuthStore();
+  const [bugReportOpen, setBugReportOpen] = useState(false);
 
   const isGuest = !user || user.role === 'GUEST';
   const isOwner = user?.role === 'SALON_OWNER';
@@ -204,6 +207,12 @@ export default function ProfileTab() {
             sublabel="גרסה 1.0.0"
             onPress={() => {/* future */}}
           />
+          <MenuRow
+            icon="bug-outline"
+            label="דווח על בעיה"
+            sublabel="שלח לנו משוב או דיווח על תקלה"
+            onPress={() => setBugReportOpen(true)}
+          />
         </View>
 
         {/* Account actions */}
@@ -221,6 +230,14 @@ export default function ProfileTab() {
           </>
         )}
       </ScrollView>
+
+      {/* Bug report modal triggered from menu row */}
+      <BugReportButton
+        open={bugReportOpen}
+        onClose={() => setBugReportOpen(false)}
+        userId={user?.id}
+        userPhone={user?.phone ?? undefined}
+      />
     </View>
   );
 }
