@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Bug } from 'lucide-react';
+import { Bug, ImagePlus, X } from 'lucide-react';
+import Image from 'next/image';
 import {
   Dialog,
   DialogContent,
@@ -32,8 +34,14 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 export default function BugReportButton() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  if (pathname.startsWith('/admin')) return null;
   const [submitted, setSubmitted] = useState(false);
+  const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -53,6 +61,32 @@ export default function BugReportButton() {
     onSuccess: () => setSubmitted(true),
   });
 
+  async function handleScreenshotChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'bug-reports');
+
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) throw new Error(data.error ?? 'Upload failed');
+      setScreenshotUrl(data.url);
+    } catch {
+      alert('שגיאה בהעלאת התמונה. נסה שוב.');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function removeScreenshot() {
+    setScreenshotUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
   function onSubmit(data: FormData) {
     submitMutation.mutate({
       type: data.type,
@@ -60,6 +94,7 @@ export default function BugReportButton() {
       description: data.description,
       page_url: typeof window !== 'undefined' ? window.location.href : undefined,
       device_info: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+      screenshot_url: screenshotUrl ?? undefined,
     });
   }
 
@@ -67,6 +102,7 @@ export default function BugReportButton() {
     setOpen(false);
     setTimeout(() => {
       setSubmitted(false);
+      setScreenshotUrl(null);
       reset();
     }, 300);
   }
@@ -137,12 +173,52 @@ export default function BugReportButton() {
                 {errors.description && <p className="text-xs text-red-500">{errors.description.message}</p>}
               </div>
 
+              {/* Screenshot upload */}
+              <div className="space-y-1.5">
+                <Label>צילום מסך (אופציונלי)</Label>
+                {screenshotUrl ? (
+                  <div className="relative rounded-lg overflow-hidden border border-gray-200">
+                    <Image
+                      src={screenshotUrl}
+                      alt="screenshot"
+                      width={400}
+                      height={200}
+                      className="w-full h-32 object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeScreenshot}
+                      className="absolute top-1.5 end-1.5 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="w-full h-20 border-2 border-dashed border-gray-200 rounded-lg flex flex-col items-center justify-center gap-1.5 text-gray-400 hover:border-gray-300 hover:text-gray-500 transition-colors disabled:opacity-50"
+                  >
+                    <ImagePlus className="w-5 h-5" />
+                    <span className="text-xs">{uploading ? 'מעלה...' : 'הוסף צילום מסך'}</span>
+                  </button>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleScreenshotChange}
+                />
+              </div>
+
               {submitMutation.isError && (
                 <p className="text-xs text-red-500">שגיאה בשליחת הדיווח. נסה שוב.</p>
               )}
 
               <div className="flex gap-2 pt-1">
-                <Button type="submit" disabled={submitMutation.isPending} className="flex-1">
+                <Button type="submit" disabled={submitMutation.isPending || uploading} className="flex-1">
                   {submitMutation.isPending ? 'שולח...' : 'שלח דיווח'}
                 </Button>
                 <Button type="button" variant="outline" onClick={handleClose}>

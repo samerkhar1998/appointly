@@ -215,6 +215,18 @@ export default function AdminBugReportsView() {
                     <p>Device: <span className="text-gray-700 break-all">{report.device_info}</span></p>
                   )}
                   <p>Reported: <span className="text-gray-700">{DATE.format(new Date(report.created_at))}</span></p>
+                  {report.screenshot_url && (
+                    <div className="mt-3">
+                      <p className="text-gray-500 mb-1.5">Screenshot:</p>
+                      <a href={report.screenshot_url} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={report.screenshot_url}
+                          alt="screenshot"
+                          className="rounded-lg border border-gray-200 max-h-60 w-full object-contain bg-gray-50 hover:opacity-90 transition-opacity"
+                        />
+                      </a>
+                    </div>
+                  )}
                 </div>
 
                 {/* Status change */}

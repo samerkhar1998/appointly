@@ -12,28 +12,19 @@ cloudinary.config({
 
 const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-const ALLOWED_FOLDERS = ['salons', 'staff', 'products'] as const;
+const ALLOWED_FOLDERS = ['salons', 'staff', 'products', 'bug-reports'] as const;
 type AllowedFolder = (typeof ALLOWED_FOLDERS)[number];
+
+// Folders that do not require a logged-in session (anyone can upload)
+const PUBLIC_FOLDERS: AllowedFolder[] = ['bug-reports'];
 
 // POST /api/upload
 // Accepts a multipart FormData body with:
 //   file   — the image file to upload
-//   folder — one of: salons | staff | products
+//   folder — one of: salons | staff | products | bug-reports
 // Returns { url: string, public_id: string } on success.
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  // ── Auth ────────────────────────────────────────────────────────────────────
-  const cookieStore = await cookies();
-  const token = cookieStore.get('appointly_token')?.value;
-  if (!token) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const payload = await verifyJwt(token);
-  if (!payload) {
-    return NextResponse.json({ error: 'Invalid or expired session' }, { status: 401 });
-  }
-
-  // ── Parse FormData ──────────────────────────────────────────────────────────
+  // ── Parse FormData early so we know the folder before auth check ────────────
   let formData: FormData;
   try {
     formData = await request.formData();
@@ -41,8 +32,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
+  const folderRaw = formData.get('folder') as string | null;
+  const isPublicFolder = PUBLIC_FOLDERS.includes(folderRaw as AllowedFolder);
+
+  // ── Auth (skipped for public folders) ──────────────────────────────────────
+  if (!isPublicFolder) {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('appointly_token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const payload = await verifyJwt(token);
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid or expired session' }, { status: 401 });
+    }
+  }
+
+  // ── Read fields from already-parsed FormData ────────────────────────────────
   const file = formData.get('file');
-  const folderRaw = formData.get('folder');
+  const folderRaw2 = formData.get('folder');
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -60,8 +68,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'File too large — maximum is 10 MB' }, { status: 400 });
   }
 
-  const folder: AllowedFolder = ALLOWED_FOLDERS.includes(folderRaw as AllowedFolder)
-    ? (folderRaw as AllowedFolder)
+  const folder: AllowedFolder = ALLOWED_FOLDERS.includes(folderRaw2 as AllowedFolder)
+    ? (folderRaw2 as AllowedFolder)
     : 'salons';
 
   // ── Upload to Cloudinary ────────────────────────────────────────────────────

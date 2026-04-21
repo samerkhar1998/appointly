@@ -30,7 +30,7 @@ function StatCard({
 }
 
 export default function AdminDashboard() {
-  const { data, isLoading } = trpc.admin.getStats.useQuery();
+  const { data, isLoading, error } = trpc.admin.getStats.useQuery();
 
   if (isLoading) {
     return (
@@ -39,6 +39,16 @@ export default function AdminDashboard() {
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="bg-white rounded-xl border border-gray-200 p-6 h-24 animate-pulse" />
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-700 text-sm">
+          Failed to load stats: {error.message}
         </div>
       </div>
     );

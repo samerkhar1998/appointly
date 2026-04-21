@@ -708,8 +708,9 @@ model BugReport {
   submitted_by_phone   String?
   submitted_by_name    String?
 
-  page_url    String?
-  device_info String?
+  page_url       String?
+  device_info    String?
+  screenshot_url String?
 
   notes BugReportNote[]
 

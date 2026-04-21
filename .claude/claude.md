@@ -20,8 +20,8 @@
 | 9d | CustomerProfile — persistent customer identity; name stored after first OTP; pre-fill booking details; OTP skip for known customers | ✅ Done |
 | 9e | In-app appointment cancellation — cancel from My Appointments tab; owner-configured window; cancellation policy on salon profile | ✅ Done |
 | 9f | i18n language toggle — Hebrew / Arabic / English, cookie-based locale (NEXT_LOCALE), next-intl, globe dropdown in header + sidebar | ✅ Done |
-| 9g | Super-Admin panel — `(admin)` route group, `superAdminProcedure`, dark sidebar, stats / salons / users / bug-reports / disputes pages, `admin_token` cookie | ✅ Done |
-| 9h | Bug Report system — `BugReport` + `BugReportNote` + `AdminInvite` models, `SUPER_ADMIN` global role, floating FAB on web + mobile, Profile tab row, `admin:invite` CLI script | ✅ Done |
+| 9g | Super-Admin panel — `(admin)` route group, `superAdminProcedure`, dark sidebar, stats / salons / users / bug-reports / disputes / settings pages, `admin_token` cookie | ✅ Done |
+| 9h | Bug Report system — `BugReport` + `BugReportNote` + `AdminInvite` models, `SUPER_ADMIN` global role, floating FAB (web + mobile), screenshot upload, Profile tab row, invite UI at `/admin/settings`, `admin:invite` CLI script | ✅ Done |
 | 10 | Test suite — happy-path tests for every tRPC procedure | 🔜 Next |
 | 11 | Tranzila payment integration — subscription billing + plan enforcement | 🔜 Next |
 | 12 | Expo Push Notifications — booking confirmations + reminders on mobile | 🔜 Next |
@@ -53,6 +53,8 @@
 - Same JWT secret, same `verifyJwt()` helper, but payload includes `role: 'SUPER_ADMIN'`
 - `requireAdmin()` verifies the cookie AND checks `payload.role === 'SUPER_ADMIN'`
 - A salon owner cannot access the admin panel; a super admin cannot access `/dashboard`
+- `packages/api/src/context.ts` reads `admin_token` **first**, then falls back to `appointly_token` — this ensures a user who has both cookies (e.g. owner + admin) is identified by their admin role when making tRPC calls from admin pages
+- **Never revert this priority** — reading `appointly_token` first would cause `superAdminProcedure` to throw FORBIDDEN for admins who also have an owner session
 
 ### tRPC procedure
 - `superAdminProcedure` is defined in `packages/api/src/trpc.ts`
@@ -63,13 +65,18 @@
 - `AdminInvite` model: `token` (UUID), `created_by`, `used_at`
 - `admin.createInvite` — `superAdminProcedure` — creates a record and returns the registration URL
 - `admin.registerWithInvite` — `publicProcedure` — validates the token is unused, creates the user with `global_role: SUPER_ADMIN`, marks `used_at`
-- CLI script: `packages/db/prisma/create-admin-invite.ts` — run with `pnpm --filter @appointly/db admin:invite <user-id>`
+- **UI:** `/admin/settings` → "Generate Invite Link" button → one-click copy → send privately
+- **CLI (first-time bootstrap):** `pnpm --filter @appointly/db admin:invite --bootstrap` — creates a temporary `system@appointly.internal` SUPER_ADMIN if none exists, then generates the invite
+- **CLI (after first admin):** `pnpm --filter @appointly/db admin:invite admin@example.com`
 - **Never expose a raw admin invite token in a public URL after it has been used**
 
 ### Bug report button
 - Web: `apps/web/src/components/BugReportButton.tsx` — fixed `bottom-6 start-6 z-50`, renders on every page via `apps/web/src/app/layout.tsx`
+- **Hidden on `/admin/*` routes** — checked client-side via `usePathname().startsWith('/admin')`; do NOT use cookie presence to hide it (the admin cookie persists across tabs)
 - Mobile: `apps/mobile/src/components/BugReportButton.tsx` — supports both FAB mode (rendered from `_layout.tsx`) and controlled mode (open/onClose props, used in Profile tab)
 - Both call `trpc.admin.submitBugReport` which is public — no auth required, no user session needed
+- Web form includes optional **screenshot upload** — file is uploaded to `/api/upload` with `folder=bug-reports`; this folder bypasses auth in the upload route
+- `BugReport.screenshot_url String?` — stored in DB, rendered in admin detail dialog
 - Success message (web): "תודה! הדיווח התקבל" — Profile tab row label: "דווח על בעיה"
 
 ### Design rules (admin pages only)

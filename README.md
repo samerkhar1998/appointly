@@ -187,18 +187,25 @@ The seed creates:
 
 ### 6. Create the first super-admin account
 
-The admin panel has no built-in sign-up form — access is gated by single-use invite tokens.
+The admin panel has no public sign-up form — access is gated by single-use invite tokens.
 
+**First time (no admin exists yet):**
 ```bash
-# 1. Manually insert a SUPER_ADMIN user in the DB (Prisma Studio is easiest):
-#    global_role = SUPER_ADMIN, email = admin@example.com, password_hash = <hash>
-
-# 2. Generate an invite link using that user's ID:
-pnpm --filter @appointly/db admin:invite <user-id>
+# Bootstrap creates a temporary system user so the invite can be generated
+pnpm --filter @appointly/db admin:invite --bootstrap
 # Prints:  http://localhost:3000/admin/register?token=<uuid>
+# Open the URL → fill in name / email / password → account created
+# Sign in at http://localhost:3000/admin/login
+```
 
-# 3. Open the URL, fill in name / email / password → registered!
-# 4. Sign in at http://localhost:3000/admin/login
+**Inviting additional admins (once you are signed in):**
+
+Go to `/admin/settings` → click **Generate Invite Link** → copy the URL → send it privately.  
+The link is single-use and becomes invalid immediately after the recipient registers.
+
+Alternatively, use the CLI (pass the email of any existing SUPER_ADMIN):
+```bash
+pnpm --filter @appointly/db admin:invite admin@example.com
 ```
 
 ### 5. Start the dev server
@@ -555,10 +562,9 @@ Go to `/dashboard/settings`.
 The admin panel lives at `/admin` and is completely separate from the salon dashboard — different route group, different JWT cookie (`admin_token`), different sidebar.
 
 **First-time setup:**
-1. Create a `SUPER_ADMIN` user directly in the DB (Prisma Studio → User table, set `global_role = SUPER_ADMIN`)
-2. Run `pnpm --filter @appointly/db admin:invite <user-id>` — prints a `/admin/register?token=…` URL
-3. Open the URL → fill in name, email, password → account created
-4. Go to `/admin/login`, sign in
+1. Run `pnpm --filter @appointly/db admin:invite --bootstrap` — prints a `/admin/register?token=…` URL
+2. Open the URL → fill in name, email, password → account created
+3. Go to `/admin/login`, sign in
 
 **Dashboard:**
 - 5 stat cards: Total Salons, Active Salons, Total Users, MRR (₪), Open Bug Reports
@@ -576,17 +582,17 @@ The admin panel lives at `/admin` and is completely separate from the salon dash
 
 **Bug Reports page:**
 - Filter by status (New / In Progress / Resolved) and type (Bug / Suggestion / Other)
-- Click any row → detail dialog with full description, submitter info, device info
+- Click any row → detail dialog with full description, submitter info, device info, and screenshot (if attached)
 - Change status via dropdown; add internal admin notes
 
 **Disputes page:**
 - Enter a phone number → shows all appointments across all salons for that customer
 - Useful for resolving "I never cancelled that!" type disputes
 
-**Inviting another admin:**
-1. Sign in to `/admin`
-2. Call `admin.createInvite` via the CLI or Prisma Studio
-3. Share the printed URL with the new admin
+**Settings page (`/admin/settings`):**
+- **Invite Super Admin** — click "Generate Invite Link" to create a one-time registration URL
+- Copy the URL with the clipboard button and share it privately
+- The link is invalidated the moment the recipient registers
 
 ---
 
@@ -639,9 +645,11 @@ The upload endpoint is at `/api/upload` — it generates a signed upload URL tha
 
 A floating 🐛 button appears fixed to the bottom-left corner on every page of the web app and every screen of the mobile app.
 
-- **Web:** click the button → dialog opens → fill type / title / description → submit calls `admin.submitBugReport` → success toast "תודה! הדיווח התקבל"
+- **Web:** click the button → dialog opens → fill type / title / description → optionally attach a screenshot → submit calls `admin.submitBugReport` → success toast "תודה! הדיווח התקבל"
 - **Mobile:** same button in the bottom-left of every screen; the Profile tab also has a dedicated "דווח על בעיה" menu row
+- The button is **hidden on all `/admin/*` pages** (super admins don't file bug reports against themselves)
 - Reports appear immediately in `/admin/bug-reports` with status `NEW`
+- Screenshots are uploaded to Cloudinary (`bug-reports/` folder) — no auth required for this folder
 
 ---
 
@@ -924,7 +932,8 @@ All appointment queries scope by `salon_id`. No cross-salon data leakage is poss
 | 9d | CustomerProfile — persistent identity, pre-fill booking, OTP skip | ✅ Done |
 | 9e | In-app cancellation — cancel window, cancellation policy on salon profile | ✅ Done |
 | 9f | i18n — Hebrew / Arabic / English language toggle (next-intl, cookie-based) | ✅ Done |
-| 9g | Super-Admin panel + Bug Report system | ✅ Done |
+| 9g | Super-Admin panel — stats, salons, users, bug-reports, disputes, settings + invite UI | ✅ Done |
+| 9h | Bug Report system — floating FAB (web + mobile), screenshot upload, admin triage | ✅ Done |
 | 10 | Test suite — happy-path tests for every tRPC procedure | 🔜 Next |
 | 11 | Tranzila payment integration — subscription billing + plan enforcement | 🔜 Next |
 | 12 | Expo Push Notifications — booking confirmations + reminders on mobile | 🔜 Next |
@@ -966,6 +975,11 @@ $PRISMA db seed       $SCHEMA        # Re-seed the demo data
 $PRISMA migrate reset $SCHEMA        # Drop + recreate + re-seed (wipes all data)
 
 # ── Admin ────────────────────────────────────────────────────────────────────
-# Generate a one-time admin invite link (requires an existing SUPER_ADMIN user ID)
-pnpm --filter @appointly/db admin:invite <user-id>
+# First-time bootstrap (no admin exists yet)
+pnpm --filter @appointly/db admin:invite --bootstrap
+
+# Generate an invite using an existing admin's email
+pnpm --filter @appointly/db admin:invite admin@example.com
+
+# Or generate an invite from the UI: /admin/settings → Generate Invite Link
 ```

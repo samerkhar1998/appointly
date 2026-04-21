@@ -26,9 +26,9 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50" dir="ltr">
       {adminUser && <AdminSidebar adminEmail={adminUser.email} />}
-      <main className={`flex-1 overflow-auto ${adminUser ? 'lg:ml-64' : ''}`}>
+      <main className={`flex-1 overflow-auto ${adminUser ? 'ml-64' : ''}`}>
         {children}
       </main>
       <Toaster />

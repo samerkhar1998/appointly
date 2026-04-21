@@ -8,6 +8,7 @@ import {
   Users,
   Bug,
   MessageSquareWarning,
+  Settings,
   LogOut,
 } from 'lucide-react';
 import { trpc } from '@/lib/trpc';
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
   { href: '/admin/users', label: 'Users', icon: Users, exact: false },
   { href: '/admin/bug-reports', label: 'Bug Reports', icon: Bug, exact: false },
   { href: '/admin/disputes', label: 'Disputes', icon: MessageSquareWarning, exact: false },
+  { href: '/admin/settings', label: 'Settings', icon: Settings, exact: false },
 ];
 
 interface AdminSidebarProps {
