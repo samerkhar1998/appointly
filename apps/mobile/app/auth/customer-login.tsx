@@ -102,7 +102,7 @@ export default function CustomerLoginScreen() {
       // step entirely and log in immediately — no local storage fallback needed.
       if (result.customer_name) {
         await loginAsCustomer(phone.trim(), result.customer_name);
-        router.replace('/(tabs)/profile' as never);
+        router.replace('/(tabs)/' as never);
         return;
       }
 
@@ -135,7 +135,7 @@ export default function CustomerLoginScreen() {
       // The user still logs in locally; they will be prompted again next time.
     }
     await loginAsCustomer(phone.trim(), trimmedName);
-    router.replace('/(tabs)/profile' as never);
+    router.replace('/(tabs)/' as never);
   }
 
   async function handleResend() {

@@ -57,8 +57,8 @@ function RootRedirect() {
     return <Redirect href="/(tabs)/owner-calendar" />;
   }
 
-  // Authenticated customer — open profile tab.
-  return <Redirect href="/(tabs)/profile" />;
+  // Authenticated customer — open home tab.
+  return <Redirect href="/(tabs)/" />;
 }
 
 export default function RootLayout() {
